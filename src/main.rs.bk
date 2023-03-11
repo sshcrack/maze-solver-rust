@@ -1,0 +1,96 @@
+// Copyright 2019 The Druid Authors.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+//! An example of a custom drawing widget.
+//! We draw an image, some text, a shape, and a curve.
+
+// On Windows platform, don't show a console when opening the app.
+#![windows_subsystem = "windows"]
+
+use druid::piet::{FontFamily, Text, TextLayoutBuilder};
+use druid::widget::prelude::*;
+use druid::{
+    AppLauncher, Color, LocalizedString,
+    WindowDesc,
+};
+
+struct CustomWidget;
+
+// If this widget has any child widgets it should call its event, update and layout
+// (and lifecycle) methods as well to make sure it works. Some things can be filtered,
+// but a general rule is to just pass it through unless you really know you don't want it.
+impl Widget<String> for CustomWidget {
+    fn event(&mut self, _ctx: &mut EventCtx, _event: &Event, _data: &mut String, _env: &Env) {}
+
+    fn lifecycle(
+        &mut self,
+        _ctx: &mut LifeCycleCtx,
+        _event: &LifeCycle,
+        _data: &String,
+        _env: &Env,
+    ) {
+    }
+
+    fn update(&mut self, _ctx: &mut UpdateCtx, _old_data: &String, _data: &String, _env: &Env) {}
+
+    fn layout(
+        &mut self,
+        _layout_ctx: &mut LayoutCtx,
+        bc: &BoxConstraints,
+        _data: &String,
+        _env: &Env,
+    ) -> Size {
+        // BoxConstraints are passed by the parent widget.
+        // This method can return any Size within those constraints:
+        // bc.constrain(my_size)
+        //
+        // To check if a dimension is infinite or not (e.g. scrolling):
+        // bc.is_width_bounded() / bc.is_height_bounded()
+        //
+        // bx.max() returns the maximum size of the widget. Be careful
+        // using this, since always make sure the widget is bounded.
+        // If bx.max() is used in a scrolling widget things will probably
+        // not work correctly.
+        if bc.is_width_bounded() && bc.is_height_bounded() {
+            bc.max()
+        } else {
+            let size = Size::new(100.0, 100.0);
+            bc.constrain(size)
+        }
+    }
+
+    // The paint method gets called last, after an event flow.
+    // It goes event -> update -> layout -> paint, and each method can influence the next.
+    // Basically, anything that changes the appearance of a widget causes a paint.
+    fn paint(&mut self, ctx: &mut PaintCtx, data: &String, _env: &Env) {
+        // This is the builder-style way of drawing text.
+        let text = ctx.text();
+        let layout = text
+            .new_text_layout(data.clone())
+            .font(FontFamily::SERIF, 24.0)
+            .text_color(Color::rgb8(128, 0, 0))
+            .build()
+            .unwrap();
+        ctx.draw_text(&layout, (100.0, 25.0));
+
+    }
+}
+
+pub fn main() {
+    let window = WindowDesc::new(CustomWidget {}).title(LocalizedString::new("Fancy Colors"));
+    AppLauncher::with_window(window)
+        .log_to_console()
+        .launch("Druid + Piet".to_string())
+        .expect("launch failed");
+}
