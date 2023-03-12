@@ -1,8 +1,4 @@
-use std::cmp::min;
-
 use druid::PaintCtx;
-
-use crate::math;
 
 pub fn get_size(ctx: &PaintCtx) -> f64 {
     let size = ctx.size();

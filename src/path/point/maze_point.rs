@@ -1,8 +1,8 @@
-use std::sync::{RwLock, Arc};
+use std::sync::{Arc, Mutex, RwLock};
 
-use druid::{Color, PaintCtx, RenderContext, Vec2, kurbo::Circle};
+use druid::{Color, PaintCtx, RenderContext, Vec2, kurbo::Circle, Rect};
 
-use crate::{path::maze::Maze, consts::POINT_RADIUS};
+use crate::{consts::POINT_RADIUS, path::maze::Maze};
 
 use super::face::Face;
 
@@ -12,7 +12,7 @@ pub struct MazePoint {
     faces: Vec<Face>,
     x: f64,
     y: f64,
-    to_draw_cache: Arc<RwLock<Vec<Face>>>
+    is_dirty: Arc<RwLock<bool>>
 }
 
 impl MazePoint {
@@ -22,13 +22,40 @@ impl MazePoint {
             faces: vec![Face::LEFT],
             x,
             y,
-            to_draw_cache: Arc::new(RwLock::new(Vec::new()))
+            is_dirty: Arc::new(RwLock::new(true))
         };
     }
 
-    pub fn update_cache(&self, maze: &Maze) {
-        let all_faces = Face::get_all();
+    pub fn get_faces(&self) -> Vec<Face> {
+        return self.faces.clone();
+    }
 
+    ///! IMPORTANT NOTICE: USE update_cache after using this method
+    pub fn add_face(&mut self, face: Face) {
+        if !self.faces.contains(&face) {
+            self.faces.push(face);
+        }
+        let mut s = self.is_dirty.write().unwrap();
+        *s = true;
+        drop(s);
+    }
+
+    pub fn get_pos(&self) -> Vec2 {
+        return Vec2 { x: self.x, y: self.y };
+    }
+
+    pub fn draw(&self, ctx: &mut PaintCtx, scale: f64, centered: f64, maze: &Maze) {
+        if !*self.is_dirty.read().unwrap() {
+            return;
+        }
+
+        let x_start = self.x * scale;
+        let y_start = self.y * scale;
+
+        ctx.fill(Rect::new(x_start, y_start, x_start + scale, y_start + scale), &Color::BLACK);
+        ctx.fill(Circle::new((x_start + centered, y_start + centered), POINT_RADIUS), &self.color);
+
+        let all_faces = Face::get_all();
         let to_draw: Vec<Face> = all_faces.iter()
             .filter(|e| {
                 let n = maze.get_neighbour(self, e);
@@ -56,38 +83,18 @@ impl MazePoint {
             .map(|e| e.to_owned())
             .collect();
 
-            let mut s = self.to_draw_cache.write().unwrap();
-            *s = to_draw;
-
-            drop(s);
-    }
-
-    pub fn get_faces(&self) -> Vec<Face> {
-        return self.faces.clone();
-    }
-
-    ///! IMPORTANT NOTICE: USE update_cache after using this method
-    pub fn add_face(&mut self, face: Face) {
-        if !self.faces.contains(&face) {
-            self.faces.push(face);
-        }
-    }
-
-    pub fn get_pos(&self) -> Vec2 {
-        return Vec2 { x: self.x, y: self.y };
-    }
-
-    pub fn draw(&self, ctx: &mut PaintCtx, scale: f64, centered: f64) {
-        let x_start = self.x * scale;
-        let y_start = self.y * scale;
-
-
-        ctx.fill(Circle::new((x_start + centered, y_start + centered), POINT_RADIUS), &self.color);
-
-        let to_draw = self.to_draw_cache.read().unwrap().clone();
-
         for side in to_draw.iter() {
-            //side.draw(&Color::WHITE, ctx, scale, x_start, y_start);
+            side.draw(&Color::WHITE, ctx, scale, x_start, y_start);
         }
+
+        let mut s = self.is_dirty.write().unwrap();
+        *s = false;
+        drop(s);
+    }
+
+    pub fn mark_dirty(&self) {
+        let mut s = self.is_dirty.write().unwrap();
+        *s = true;
+        drop(s);
     }
 }

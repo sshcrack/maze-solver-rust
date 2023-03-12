@@ -1,13 +1,13 @@
-
 // On Windows platform, don't show a console when opening the app.
 #![windows_subsystem = "windows"]
 
+use std::sync::{Arc, RwLock};
 use std::thread;
-use std::time::Duration;
 
 use consts::{DEFAULT_DIMENSION, MAZE_UPDATE};
-use druid::piet::{FontFamily, Text, TextLayoutBuilder};
-use druid::widget::{prelude::*, Flex, AspectRatioBox, FlexParams, CrossAxisAlignment};
+use druid::piet::d2d::Bitmap;
+use druid::piet::{FontFamily, InterpolationMode, Text, TextLayoutBuilder};
+use druid::widget::{prelude::*, AspectRatioBox, CrossAxisAlignment, Flex, FlexParams};
 use druid::{AppLauncher, Color, LocalizedString, Rect, WindowDesc};
 use path::maze::Maze;
 use rand::Rng;
@@ -19,7 +19,18 @@ mod math;
 mod path;
 mod tool;
 
-struct MazeDisplay {}
+struct MazeDisplay {
+    render_cache: Arc<RwLock<Option<Bitmap>>>,
+}
+
+impl MazeDisplay {
+    fn mark_dirty(&self) {
+        println!("Marking dirty");
+        let mut s = self.render_cache.write().unwrap();
+        *s = None;
+        drop(s);
+    }
+}
 
 impl Widget<Option<Maze>> for MazeDisplay {
     fn event(&mut self, ctx: &mut EventCtx, event: &Event, _data: &mut Option<Maze>, _env: &Env) {
@@ -31,6 +42,12 @@ impl Widget<Option<Maze>> for MazeDisplay {
             Event::WindowConnected => {
                 ctx.request_anim_frame();
                 //ctx.request_timer(Duration::from_millis(UPDATE_INTERVAL));
+            },
+            Event::WindowScale(_) => {
+                self.mark_dirty();
+            },
+            Event::WindowSize(_) => {
+                self.mark_dirty();
             }
             Event::Command(e) => {
                 if e.is(MAZE_UPDATE) {
@@ -42,11 +59,23 @@ impl Widget<Option<Maze>> for MazeDisplay {
         }
     }
 
-    fn lifecycle(&mut self, ctx: &mut LifeCycleCtx, _event: &LifeCycle, _data: &Option<Maze>, _env: &Env) {
+    fn lifecycle(
+        &mut self,
+        ctx: &mut LifeCycleCtx,
+        _event: &LifeCycle,
+        _data: &Option<Maze>,
+        _env: &Env,
+    ) {
         ctx.request_paint();
     }
 
-    fn update(&mut self, ctx: &mut UpdateCtx, _old_data: &Option<Maze>, _data: &Option<Maze>, _env: &Env) {
+    fn update(
+        &mut self,
+        ctx: &mut UpdateCtx,
+        _old_data: &Option<Maze>,
+        _data: &Option<Maze>,
+        _env: &Env,
+    ) {
         ctx.request_paint();
     }
 
@@ -57,9 +86,14 @@ impl Widget<Option<Maze>> for MazeDisplay {
         _data: &Option<Maze>,
         _env: &Env,
     ) -> Size {
-        let e= if bc.is_width_bounded() || bc.is_height_bounded() {
+        self.mark_dirty();
+        let e = if bc.is_width_bounded() || bc.is_height_bounded() {
             let max = bc.max();
-            let dim = if max.height < max.width { max.height } else { max.width };
+            let dim = if max.height < max.width {
+                max.height
+            } else {
+                max.width
+            };
 
             bc.constrain_aspect_ratio(1.0, dim)
         } else {
@@ -72,9 +106,8 @@ impl Widget<Option<Maze>> for MazeDisplay {
     fn paint(&mut self, ctx: &mut PaintCtx, maze: &Option<Maze>, _env: &Env) {
         let size = get_size(ctx);
 
-        ctx.fill(Rect::new(0.0, 0.0, size, size), &Color::BLACK);
-        if maze.is_none()
-        {
+        if maze.is_none() {
+            ctx.fill(Rect::new(0.0, 0.0, size, size), &Color::BLACK);
             let text = ctx.text();
             let layout = text
                 .new_text_layout("Generating maze...")
@@ -83,23 +116,54 @@ impl Widget<Option<Maze>> for MazeDisplay {
                 .build()
                 .unwrap();
             ctx.draw_text(&layout, (100.0, 25.0));
-
+            let mut s = self.render_cache.write().unwrap();
+            *s = None;
+            drop(s);
         } else {
             let maze = maze.as_ref().unwrap();
-            maze.draw(ctx);
+
+            if self.render_cache.read().unwrap().is_none() {
+                ctx.fill(Rect::new(0.0, 0.0, size, size), &Color::BLACK);
+                maze.mark_dirty();
+
+                maze.draw(ctx);
+
+                let e = ctx
+                    .capture_image_area(Rect::new(0.0, 0.0, size, size))
+                    .unwrap();
+                let mut s = self.render_cache.write().unwrap();
+                *s = Some(e);
+                drop(s);
+            } else {
+                let s = self.render_cache.read().unwrap();
+                let e = s.as_ref().unwrap();
+                ctx.draw_image(
+                    &e,
+                    Rect::new(0.0, 0.0, size, size),
+                    InterpolationMode::Bilinear,
+                );
+
+                drop(s);
+            }
         }
     }
 }
 
 pub fn main() {
     let mut col = Flex::row();
-    let display = AspectRatioBox::new(MazeDisplay {}, 1.0);
+    let display = AspectRatioBox::new(
+        MazeDisplay {
+            render_cache: Arc::new(RwLock::new(None)),
+        },
+        1.0,
+    );
     let mut maze = Maze::create(DEFAULT_DIMENSION);
 
     col.add_flex_child(display, FlexParams::new(1.0, CrossAxisAlignment::End));
     let window = WindowDesc::new(col)
         .title(LocalizedString::new("maze-title").with_placeholder("Maze Generator"))
-        .resizable(true).window_size_policy(druid::WindowSizePolicy::User);
+        .resizable(true)
+        .window_size_policy(druid::WindowSizePolicy::User);
 
     let launcher = AppLauncher::with_window(window).log_to_console();
 
@@ -111,18 +175,14 @@ pub fn main() {
                 let r = rng.gen::<f64>();
                 let g = rng.gen::<f64>();
                 let b = rng.gen::<f64>();
-                ele.color = Color::rgb(r,g,b);
+                ele.color = Color::rgb(r, g, b);
             }
 
             let temp = maze.clone();
-            sink.add_idle_callback(move |opt: &mut Option<Maze>| {
-                *opt = Some(temp)
-            });
+            sink.add_idle_callback(move |opt: &mut Option<Maze>| *opt = Some(temp));
             //thread::sleep(Duration::from_millis(2000));
         }
     });
 
-    launcher
-        .launch(None)
-        .expect("launch failed");
+    launcher.launch(None).expect("launch failed");
 }

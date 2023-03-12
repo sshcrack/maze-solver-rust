@@ -10,7 +10,7 @@ use super::point::{face::Face, maze_point::MazePoint};
 pub struct Maze {
     #[data(ignore)]
     points: Vec<MazePoint>,
-    dimension: f64,
+    dimension: f64
 }
 
 impl Maze {
@@ -21,19 +21,10 @@ impl Maze {
             points.push(MazePoint::default((x / dim) as f64, (x % dim) as f64));
         }
 
-        let e = Self {
+        return Self {
             points,
-            dimension: dim as f64,
+            dimension: dim as f64
         };
-        e.initialize();
-
-        return e;
-    }
-
-    pub fn initialize(&self) {
-        for ele in self.get_all() {
-            ele.update_cache(self);
-        }
     }
 
     pub fn draw(&self, ctx: &mut PaintCtx) {
@@ -46,11 +37,17 @@ impl Maze {
         let centered = scale / 2.0;
 
         for point in &self.points {
-            point.draw(ctx, scale, centered);
+            point.draw(ctx, scale, centered, self);
         }
 
         let duration = x.elapsed();
         println!("Maze render is: {:?}\n", duration);
+    }
+
+    pub fn mark_dirty(&self) {
+        for ele in self.points.iter() {
+            ele.mark_dirty();
+        }
     }
 
     pub fn get_all(&self) -> &Vec<MazePoint> {
