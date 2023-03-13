@@ -7,5 +7,6 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.69"
-druid = { version = "0.8.3" }
+lazy_static = "1.4.0"
+minifb = "0.24.0"
 rand = "0.8.5"
