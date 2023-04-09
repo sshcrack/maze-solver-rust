@@ -1,8 +1,6 @@
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PointState {
-    UP,
-    DOWN,
-    LEFT,
-    RIGHT,
+    VISITED,
+    PASSAGE,
     WALL
 }

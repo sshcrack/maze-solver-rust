@@ -11,7 +11,7 @@ fn main_run() -> anyhow::Result<()> {
     setup_constants();
 
     let mut window = setup_window()?;
-    generate(&mut window);
+    generate(&mut window)?;
 
     Ok(())
 }

@@ -29,7 +29,7 @@ pub fn setup_constants() {
     drop(s);
 
     let mut s = MAZE_SIZE.write().unwrap();
-    *s = 100;
+    *s = 50;
 
     drop(s);
 }
@@ -46,12 +46,12 @@ pub fn get_speed() -> Result<f64> {
 }
 
 pub fn get_size() -> Result<usize> {
-    let size = MAZE_SIZE.read().or(Err(anyhow!("Error reading size")))?;
-    drop(size);
+    let s = MAZE_SIZE.read().or(Err(anyhow!("Error reading size")))?;
+    let mut size = s.clone();
 
-    let mut size = size.clone();
+    drop(s);
     if size % 2 == 0 {
-        let s = MAZE_SIZE.write().or(Err(anyhow!("Error writing size")))?;
+        let mut s = MAZE_SIZE.write().or(Err(anyhow!("Error writing size")))?;
         size += 1;
         *s = size;
 
