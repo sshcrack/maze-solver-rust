@@ -1,6 +1,8 @@
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PointState {
-    VISITED,
-    PASSAGE,
-    WALL
+    Highlight,
+    HighlightSecondary,
+    SolvePath,
+    Passage,
+    Wall
 }

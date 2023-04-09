@@ -7,7 +7,7 @@ use super::hunt_and_kill;
 pub fn generate(window: &mut Window) -> anyhow::Result<()> {
     let size = get_size()?;
 
-    let mut maze = vec![PointState::WALL; size * size];
+    let mut maze = vec![PointState::Wall; size * size];
     hunt_and_kill(&mut maze, window)?;
 
     /*maze[vec2_to_numb(30, 10, size)] = PointState::PASSAGE;

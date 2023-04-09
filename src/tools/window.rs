@@ -17,6 +17,10 @@ fn from_u8_rgb(r: u8, g: u8, b: u8) -> u32 {
 }
 
 pub fn draw_maze(window: &mut Window, maze: &Maze) -> anyhow::Result<()> {
+    draw_maze_overwrites(window, maze, &Vec::new())
+}
+
+pub fn draw_maze_overwrites(window: &mut Window, maze: &Maze, visual_overwrites: &Vec<Option<PointState>>) -> anyhow::Result<()> {
     let size = get_size()?;
     let scale = get_scale()?;
 
@@ -27,11 +31,13 @@ pub fn draw_maze(window: &mut Window, maze: &Maze) -> anyhow::Result<()> {
         let x = pos % size;
         let y = pos / size;
 
-        let point = maze.get(pos).unwrap();
+        let point = visual_overwrites.get(pos).unwrap_or(&None).unwrap_or(*maze.get(pos).unwrap());
         let color = match point {
-            PointState::PASSAGE => from_u8_rgb(255, 0, 0),
-            PointState::VISITED=> from_u8_rgb(0, 255, 0),
-            PointState::WALL => from_u8_rgb(0, 0, 0)
+            PointState::Passage => from_u8_rgb(255, 0, 0),
+            PointState::SolvePath => from_u8_rgb(0, 255, 0),
+            PointState::Wall => from_u8_rgb(0, 0, 0),
+            PointState::Highlight => from_u8_rgb(0, 0, 255),
+            PointState::HighlightSecondary => from_u8_rgb(255, 0, 255)
         };
 
         let rel_x = ((x as f64) / (size as f64) * buf_size as f64) as usize;
