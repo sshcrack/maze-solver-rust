@@ -1,8 +1,8 @@
 use std::{ops::Range, iter::StepBy};
 
-use crate::point::{point::Point, point_state::PointState};
+use rand_distr::num_traits::Pow;
 
-use super::consts::{Maze, get_size};
+use crate::point::point::Point;
 
 pub fn vec2_to_numb(x: usize, y: usize, size: usize) -> usize {
     return y * size + x;
@@ -16,26 +16,34 @@ pub fn point_to_numb(p: &Point, size: usize) -> usize {
     return vec2_to_numb(p.x, p.y, size);
 }
 
-pub fn get_point_vec(maze: &Maze, pos: &Point, size: usize) -> PointState {
-    let pos = vec2_to_numb(pos.x, pos.y, size);
+pub fn get_point<T>(matrix: &[T], Point {x, y}: &Point) -> T
+    where
+        T: Copy
+{
+    let size = (matrix.len() as f64).sqrt() as usize;
+    let pos = vec2_to_numb(*x, *y, size);
 
-    maze[pos]
+    matrix[pos]
 }
 
-pub fn get_point(maze: &Maze, x: usize, y: usize, size: usize) -> PointState {
-    let pos = vec2_to_numb(x, y, size);
-
-    maze[pos]
-}
-
-pub fn set_point(maze: &mut Maze, x: usize, y: usize, size: usize, state: PointState) {
-    maze[vec2_to_numb(x, y, size)] = state;
-}
-
-pub fn set_point_vec2(maze: &mut Maze, pos: &Point, size: usize, state: PointState) {
-    maze[vec2_to_numb(pos.x, pos.y, size)] = state;
+pub fn set_point<T>(matrix: &mut [T], Point {x, y}: &Point, state: T) {
+    let size = (matrix.len() as f64).sqrt() as usize;
+    matrix[vec2_to_numb(*x, *y, size)] = state;
 }
 
 pub fn get_maze_iter(size: &usize) -> StepBy<Range<usize>> {
     (1..size.clone()).step_by(2)
+}
+
+pub fn get_dist(src: &Point, dest: &Point) -> u64 {
+    let Point { x: s_x, y: s_y} = src;
+    let Point { x: d_x, y: d_y} = dest;
+
+    let s_x = *s_x as i32;
+    let s_y = *s_y as i32;
+
+    let d_x = *d_x as i32;
+    let d_y = *d_y as i32;
+
+    return ((s_x - d_x).abs() + (s_y - d_y).abs()).try_into().unwrap()
 }

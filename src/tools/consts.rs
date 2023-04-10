@@ -1,69 +1,76 @@
 use std::{sync::{Arc, RwLock}, ops::Range};
 
-use anyhow::{Result, anyhow};
+use anyhow::Result;
 use lazy_static::lazy_static;
 use rand::{rngs::StdRng, SeedableRng, Rng};
 
 use crate::point::point_state::PointState;
 
-pub type AnimationScale = Arc<RwLock<usize>>;
-pub type AnimationSpeed = Arc<RwLock<f64>>;
-pub type MazeSize = Arc<RwLock<usize>>;
+#[derive(Debug, Clone, Copy)]
+pub struct MazeOptions {
+    pub scale: usize,
+    pub speed: f64,
+    pub size: usize,
+    pub seed: u64,
+    pub show_animation: bool
+}
+
+impl Default for MazeOptions {
+    fn default() -> Self {
+        Self {
+            scale: 5,
+            speed: 1.0,
+            size: 50,
+            seed: rand::random(),
+            show_animation: true
+        }
+    }
+}
+
+pub type MazeOptionsArc = Arc<RwLock<MazeOptions>>;
+pub type FrameCount = Arc<RwLock<u128>>;
 pub type MazeSeeder = Arc<RwLock<StdRng>>;
 pub type Maze = Vec<PointState>;
 
 
 lazy_static! {
-    pub static ref ANIMATION_SCALE: AnimationScale = AnimationScale::default();
-    pub static ref ANIMATION_SPEED: AnimationSpeed = AnimationSpeed::default();
-    pub static ref MAZE_SIZE: MazeSize = MazeSize::default();
+    pub static ref MAZE_OPTIONS: MazeOptionsArc = MazeOptionsArc::default();
 
-    pub static ref MAZE_SEED: u64 = 0;
-    pub static ref MAZE_SEEDER: MazeSeeder = Arc::new(RwLock::new(StdRng::seed_from_u64(*MAZE_SEED)));
+    pub static ref FRAME_COUNT: FrameCount = FrameCount::default();
+    pub static ref MAZE_SEEDER: MazeSeeder = Arc::new(RwLock::new(StdRng::seed_from_u64(0)));
 }
 
 
-pub fn setup_constants() {
-    let mut s = ANIMATION_SCALE.write().unwrap();
-    *s = 5;
+pub fn setup_constants(mut opt: MazeOptions) {
+    let mut s = MAZE_OPTIONS.write().unwrap();
+    if opt.size % 2 == 0 {
+        opt.size += 1;
+    }
+
+    *s = opt;
+
     drop(s);
 
-    let mut s = ANIMATION_SPEED.write().unwrap();
-    *s = 1.0;
 
-    drop(s);
-
-    let mut s = MAZE_SIZE.write().unwrap();
-    *s = 50;
+    let mut s = MAZE_SEEDER.write().unwrap();
+    *s = StdRng::seed_from_u64(opt.seed);
 
     drop(s);
 }
 
-pub fn get_scale() -> Result<usize> {
-    let scale = ANIMATION_SCALE.read().or(Err(anyhow!("Error reading scale")))?;
+pub fn get_options() -> Result<MazeOptions> {
+    let s = MAZE_OPTIONS.read().unwrap();
+    let opt = s.clone();
 
-    return Ok(scale.clone());
-}
+    drop(s);
 
-pub fn get_speed() -> Result<f64> {
-    let e = ANIMATION_SPEED.read().or(Err(anyhow!("Error reading speed")))?;
-    return Ok(e.clone());
+    return Ok(opt);
 }
 
 pub fn get_size() -> Result<usize> {
-    let s = MAZE_SIZE.read().or(Err(anyhow!("Error reading size")))?;
-    let mut size = s.clone();
+    let opt = get_options()?;
 
-    drop(s);
-    if size % 2 == 0 {
-        let mut s = MAZE_SIZE.write().or(Err(anyhow!("Error writing size")))?;
-        size += 1;
-        *s = size;
-
-        drop(s);
-    }
-
-    return Ok(size);
+    return Ok(opt.size);
 }
 
 pub fn rand_range(r: Range<usize>) -> usize {
@@ -75,5 +82,7 @@ pub fn rand_range(r: Range<usize>) -> usize {
 }
 
 pub fn get_window_size() -> Result<usize> {
-    return Ok(get_scale()? * get_size()?);
+    let MazeOptions { scale, size, .. } = get_options()?;
+
+    return Ok(scale * size);
 }

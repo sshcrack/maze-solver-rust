@@ -1,22 +1,17 @@
-use std::{
-    collections::BinaryHeap,
-    sync::{Arc, RwLock},
-};
+use std::collections::BinaryHeap;
 
 use anyhow::{anyhow, Result};
 use minifb::Window;
-use rand::Rng;
 
 use crate::{
     point::{
-        direction::{Direction, DIRECTION_VEC},
+        direction::Direction,
         point::Point,
-        point_state::PointState,
+        point_state::{PointState, VisualIndicator},
     },
     tools::{
-        consts::{get_size, Maze, rand_range},
-        math::{get_maze_iter, get_point_vec, set_point_vec2, vec2_to_numb, point_to_numb},
-        window::{draw_maze, draw_maze_overwrites},
+        consts::{Maze, rand_range, get_size},
+        math::{get_maze_iter, vec2_to_numb, point_to_numb, get_point, set_point}, window::{update_maze_debug, update_maze}, matrix::{go_to_dir, get_surrounding_walls, get_available_dirs_state}
     },
 };
 
@@ -33,7 +28,7 @@ pub fn hunt_and_kill(maze: &mut Maze, window: &mut Window) -> anyhow::Result<()>
 
     while !pending.is_empty() {
         let mut p = pending.pop().unwrap();
-        let mut dirs = get_available_dirs(maze, &p)?;
+        let mut dirs = get_surrounding_walls(maze, &p)?;
         let mut adjacent_passages = get_available_dirs_state(maze, &p, PointState::Passage)?;
 
         if dirs.is_empty() {
@@ -45,7 +40,7 @@ pub fn hunt_and_kill(maze: &mut Maze, window: &mut Window) -> anyhow::Result<()>
         }
 
         let rand_dir = dirs[rand_range(0..dirs.len())];
-        let neighbor = go_to_dir(maze, &p, &rand_dir)?;
+        let neighbor = go_to_dir(&p, &rand_dir)?;
         if neighbor.is_none() {
             println!("Neighbor null");
             continue;
@@ -56,21 +51,14 @@ pub fn hunt_and_kill(maze: &mut Maze, window: &mut Window) -> anyhow::Result<()>
         remove_wall(maze, &p, &neighbor)?;
         pending.push(neighbor);
 
-        /*println!(
-            "from {:?} to {:?} {:?} dir {:?}",
-            p,
-            neighbor,
-            get_point_vec(maze, &neighbor, size),
-            rand_dir
-        );*/
-        for i in 0..2 {
-            draw_maze(window, maze)?;
-        }
+        //update_maze(window, maze, false)?;
     }
 
-    loop {
-        draw_maze(window, maze)?;
+    for _ in 0..25 {
+        update_maze(window, maze, true)?;
     }
+
+    return Ok(());
 }
 
 fn hunt_phase(
@@ -80,7 +68,6 @@ fn hunt_phase(
     dirs: &mut Vec<Direction>,
     adjacent_passages: &mut Vec<Direction>,
 ) -> Result<()> {
-    let mut rng = rand::thread_rng();
     let size = get_size()?;
 
     let mut should_break = false;
@@ -88,27 +75,22 @@ fn hunt_phase(
     for x in get_maze_iter(&size) {
         for y in get_maze_iter(&size) {
             *p = Point { x, y };
-            if get_point_vec(maze, &p, size) == PointState::Wall {
+            if get_point(maze, &p) == PointState::Wall {
                 *adjacent_passages = get_available_dirs_state(maze, p, PointState::Passage)?;
-                visual_overwrites[point_to_numb(&p, size)] = Some(PointState::Highlight);
-                if rng.gen_bool(0.3) {
-                    draw_maze_overwrites(window, maze, &visual_overwrites)?;
-                }
+                visual_overwrites[point_to_numb(&p, size)] = Some(VisualIndicator::Searching);
 
+                //update_maze_debug(window, maze, &visual_overwrites, true)?;
                 if !adjacent_passages.is_empty() {
-                    println!("Adjacent are {:?}", adjacent_passages);
                     let passage_dir = adjacent_passages
                         .get(rand_range(0..adjacent_passages.len()))
                         .unwrap();
-                    let passage = go_to_dir(maze, &p, passage_dir)?.unwrap();
+                    let passage = go_to_dir(&p, passage_dir)?.unwrap();
 
-                    *dirs = get_available_dirs(maze, &p)?;
-                    println!("Dirs are {:?} adjacent: {:?}", dirs, adjacent_passages);
+                    *dirs = get_surrounding_walls(maze, &p)?;
                     if dirs.is_empty() {
-                        println!("Dirs are empty.");
-                        visual_overwrites[point_to_numb(&p, size)] = Some(PointState::SolvePath);
+                        visual_overwrites[point_to_numb(&p, size)] = Some(VisualIndicator::SolvePath);
 
-                        set_point_vec2(maze, &p, size, PointState::Passage);
+                        set_point(maze, &p, PointState::Passage);
                         remove_wall(maze, &p, &passage)?;
                         *adjacent_passages = vec![];
                         continue;
@@ -122,70 +104,18 @@ fn hunt_phase(
         }
 
         if should_break {
-            println!("Breaking");
             break;
         }
     }
 
-    visual_overwrites[point_to_numb(&p, size)] = Some(PointState::HighlightSecondary);
-    for _ in 0..10 {
-        draw_maze_overwrites(window, maze, &visual_overwrites)?;
+    visual_overwrites[point_to_numb(&p, size)] = Some(VisualIndicator::Match);
+
+    for _ in 0..5 {
+        update_maze_debug(window, maze, &visual_overwrites, true)?;
     }
 
     Ok(())
     //println!("Should kill dirs {:?}", dirs);
-}
-
-pub fn go_to_dir(maze: &Maze, point: &Point, dir: &Direction) -> Result<Option<Point>> {
-    let mut pos = None;
-    let size = get_size()? as i32;
-    let Point { x, y } = *point;
-
-    for info in &*DIRECTION_VEC {
-        if info.dir == *dir {
-            let x = x as i32 + info.x;
-            let y = y as i32 + info.y;
-            if x < 0 || y < 0 || x >= size || y >= size {
-                continue;
-            }
-
-            let x = x as usize;
-            let y = y as usize;
-            pos = Some(Point { x, y });
-            break;
-        }
-    }
-
-    return Ok(pos);
-}
-
-pub fn get_available_dirs(maze: &Maze, point: &Point) -> anyhow::Result<Vec<Direction>> {
-    get_available_dirs_state(maze, point, PointState::Wall)
-}
-
-pub fn get_available_dirs_state(
-    maze: &Maze,
-    point: &Point,
-    desired_state: PointState,
-) -> anyhow::Result<Vec<Direction>> {
-    let mut available = Vec::new();
-    let size = get_size()?;
-
-    for dir in Direction::all() {
-        let p = go_to_dir(maze, point, &dir)?;
-        if p.is_none() {
-            continue;
-        }
-
-        let p = p.unwrap();
-        let state = get_point_vec(maze, &p, size);
-
-        if state == desired_state {
-            available.push(dir);
-        }
-    }
-
-    Ok(available)
 }
 
 pub fn remove_wall(maze: &mut Maze, from: &Point, to: &Point) -> Result<()> {

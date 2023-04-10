@@ -2,6 +2,8 @@ use lazy_static::lazy_static;
 
 use crate::tools::direction_data::DirectionData;
 
+use super::point::Point;
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Direction {
     UP,
@@ -18,6 +20,16 @@ impl Direction {
             Direction::RIGHT,
             Direction::DOWN
         ]
+    }
+
+    pub fn to_data(&self) -> DirectionData {
+        for data in DIRECTION_VEC.iter() {
+            if &data.dir == self {
+                return data.clone();
+            }
+        }
+
+        panic!("wtf just happened there is no vec data in DIRECTION_VEC for {:?}", self)
     }
 }
 
