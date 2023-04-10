@@ -1,8 +1,6 @@
 use std::collections::BinaryHeap;
 
 use anyhow::{anyhow, Result};
-use minifb::Window;
-
 use crate::{
     point::{
         direction::Direction,
@@ -12,10 +10,10 @@ use crate::{
     tools::{
         consts::{Maze, rand_range, get_size},
         math::{get_maze_iter, vec2_to_numb, point_to_numb, get_point, set_point}, window::{update_maze_debug, update_maze}, matrix::{go_to_dir, get_surrounding_walls, get_available_dirs_state}
-    },
+    }, manager::Window,
 };
 
-pub fn hunt_and_kill(maze: &mut Maze, window: &mut Window) -> anyhow::Result<()> {
+pub fn hunt_and_kill(maze: &mut Maze, window: &Window) -> anyhow::Result<()> {
     let size = get_size()?;
     let cell_size = (size - 1) / 2;
 
@@ -57,7 +55,7 @@ pub fn hunt_and_kill(maze: &mut Maze, window: &mut Window) -> anyhow::Result<()>
 }
 
 fn hunt_phase(
-    window: &mut Window,
+    window: &Window,
     maze: &mut Maze,
     p: &mut Point,
     dirs: &mut Vec<Direction>,

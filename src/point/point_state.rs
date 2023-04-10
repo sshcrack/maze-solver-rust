@@ -1,3 +1,5 @@
+use egui::Color32;
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PointState {
     Passage,
@@ -11,5 +13,5 @@ pub enum VisualIndicator {
     SolvePath,
     Start,
     End,
-    Custom(u32)
+    Custom(Color32)
 }

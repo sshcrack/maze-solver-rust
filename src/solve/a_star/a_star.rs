@@ -1,12 +1,12 @@
 use std::collections::BinaryHeap;
 
 use anyhow::{Result, anyhow};
-use minifb::Window;
+use egui::Color32;
 
-use crate::{tools::{consts::{Maze, get_size}, matrix::{go_to_dir, get_available_dirs_state, has_passage_between, get_pos_between}, math::{set_point, point_to_numb, linear_dist}, window::{update_maze_debug, from_u8_rgb}}, solve::solve::SolveOptions, point::{point_state::{VisualIndicator, PointState}, point::Point}};
+use crate::{tools::{consts::{Maze, get_size}, matrix::{go_to_dir, get_available_dirs_state, has_passage_between, get_pos_between}, math::{set_point, point_to_numb, linear_dist}, window::{update_maze_debug, from_u8_rgb}}, solve::solve::SolveOptions, point::{point_state::{VisualIndicator, PointState}, point::Point}, manager::Window};
 use super::Node;
 
-pub fn a_star(maze: &mut Maze, window: &mut Window, options: &SolveOptions) -> Result<Vec<Point>> {
+pub fn a_star(maze: &mut Maze, window: &Window, options: &SolveOptions) -> Result<Vec<Point>> {
     println!("Running a*");
     let SolveOptions { start, end, ..} = options;
     let size = get_size()?;
@@ -60,8 +60,8 @@ pub fn a_star(maze: &mut Maze, window: &mut Window, options: &SolveOptions) -> R
             if temp_cost < neighbor.get_cost() {
                 let color = ((1.0 - (linear_dist(&neighbor_pos, &end) as f64) / (start_cost as f64)) * 255.0).abs().floor() as u8;
 
-                set_point(&mut visual_overwrites, &neighbor_pos, Some(VisualIndicator::Custom(from_u8_rgb(color, 0, 255))));
-                set_point(&mut visual_overwrites, &between_pos, Some(VisualIndicator::Custom(from_u8_rgb(color, 0, 255))));
+                set_point(&mut visual_overwrites, &neighbor_pos, Some(VisualIndicator::Custom(Color32::from_rgb(color, 0, 255))));
+                set_point(&mut visual_overwrites, &between_pos, Some(VisualIndicator::Custom(Color32::from_rgb(color, 0, 255))));
                 neighbor.update(&node);
                 pending.push(neighbor_pos);
             }

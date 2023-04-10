@@ -1,98 +1,107 @@
-use generators::generate::generate;
-use point::{point::Point, point_state::VisualIndicator, direction::DIRECTION_VEC};
-use solve::solve::{solve, SolveOptions, SolveAlgorithm};
-use tools::{consts::{setup_constants, MazeOptions, get_size}, window::{setup_window, update_maze_debug}, matrix::get_pos_between, math::{set_point, set_point_mult}};
-use std::io::{stdin, stdout, Read, Write};
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 
-mod tools;
+use std::{
+    sync::{Arc, RwLock},
+    thread,
+    time::Duration,
+};
+
+use egui::*;
+use manager::{MazeThread, Window};
+
 mod generators;
-mod solve;
+mod manager;
 mod point;
+mod solve;
+mod tools;
 
-
-fn main_run() -> anyhow::Result<()> {
-    let scale = 5;
-    let speed = 1.0;
-    let size = 50;
-    let seed: u64 = rand::random();
-
-    setup_constants(MazeOptions {
-        scale,
-        speed,
-        size,
-        seed,
-        show_animation: true
-    });
-
-    let end_coords = get_size()? -2;
-
-    let mut window = setup_window()?;
-    let mut maze = generate(&mut window)?;
-
-    let start = Point { x: 1, y: 1 };
-    let end = Point { x: end_coords, y: end_coords };
-
-    let options = SolveOptions {
-        algorithm: SolveAlgorithm::AStar,
-        start,
-        end
+fn main() -> Result<(), eframe::Error> {
+    let options = eframe::NativeOptions {
+        ..Default::default()
     };
+    eframe::run_native(
+        "Maze Solver",
+        options,
+        Box::new(|cc| {
+            let ctx = cc.egui_ctx.clone();
+            let app = MyApp::new(&ctx);
 
-    let size = get_size()?;
-    let path = solve(&mut maze, &mut window, &options)?;
-    let mut visual_overwrites = vec![None as Option<VisualIndicator>; size * size];
+            let temp = app.size.clone();
+            let temp1 = app.pixels.clone();
+            thread::spawn(|| maze_thread(ctx, temp, temp1));
+            Box::new(app)
+        }),
+    )
+}
 
-    for i in 0..path.len() {
-        let next_index = i + 1;
-        if next_index == path.len() { continue; }
+fn maze_thread(ctx: Context, size_arc: Arc<RwLock<usize>>, maze: Arc<RwLock<Vec<Color32>>>) {
+    loop {
+        let size = size_arc.read().unwrap().clone();
+        let mut s = maze.write().unwrap();
+        *s = vec![Color32::BLACK; size * size];
 
-        let p = path[i];
-        let n = path[next_index];
 
-        let mut dir = None;
-        for el in DIRECTION_VEC.iter() {
-            let x = n.x as i32 - p.x as i32;
-            let y = n.y as i32 - p.y as i32;
-
-            if x == el.x && y == el.y {
-                dir = Some(el.dir);
+        let e = rand::random();
+        for x in 0..size {
+            for y in 0..size {
+                s[size * y + x] = Color32::from_rgb(e, e, e)
             }
         }
+        drop(s);
+        ctx.request_repaint();
+        thread::sleep(Duration::from_millis(100));
+    }
+}
 
-        if dir.is_none() {
-            eprintln!("Could not find direction for {:?} to {:?}6", p, n);
-            continue;
+struct MyApp {
+    pixels: Arc<RwLock<Vec<Color32>>>,
+    size: Arc<RwLock<usize>>,
+    curr: MazeThread
+}
+
+impl MyApp {
+    fn new(ctx: &Context) -> Self {
+        let pixels = Arc::new(RwLock::new(Vec::new()));
+        let size = Arc::new(RwLock::new(0));
+        let window = Window::new(&ctx, &size, &pixels);
+
+        Self {
+            pixels,
+            size,
+            curr: MazeThread::new_default(&window)
         }
-
-        let between = get_pos_between(&p, &dir.unwrap())?.unwrap();
-        set_point_mult(&mut visual_overwrites, &vec![p, between, n], Some(VisualIndicator::SolvePath));
-    }
-
-    set_point(&mut visual_overwrites, &start, Some(VisualIndicator::Start));
-    set_point(&mut visual_overwrites, &end, Some(VisualIndicator::End));
-
-    loop {
-        update_maze_debug(&mut window, &maze, &visual_overwrites, true)?;
     }
 }
 
+impl eframe::App for MyApp {
+    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        egui::CentralPanel::default().show(ctx, |ui| {
+            ui.heading("My egui Application");
+            ui.horizontal(|ui| {
+                let name_label = ui.label("Your name: ");
+                let mut t = "".to_string();
+                ui.text_edit_singleline(&mut t).labelled_by(name_label.id);
+            });
+            ui.label(format!("Seed is {}", ""));
 
-pub fn main() {
-    let res = main_run();
-    if res.is_err() {
-        eprintln!("{}", res.unwrap_err());
-    } else {
-        println!("Done.");
+            let mut texture =
+                ctx.load_texture("maze-texture", ColorImage::example(), Default::default());
+
+            let left = ui.available_size_before_wrap();
+            let size = left.min_elem() as usize;
+            *self.size.write().unwrap() = size;
+
+            let mut img = ColorImage::new([size, size], Color32::BLACK);
+
+            let to_fill = self.pixels.read().unwrap().clone();
+            for i in 0..to_fill.len().min(img.pixels.len()) {
+                img.pixels[i] = to_fill[i];
+            }
+
+            texture.set(img, Default::default());
+            ui.with_layout(egui::Layout::bottom_up(egui::Align::Center), |ui| {
+                ui.image(texture.id(), texture.size_vec2())
+            });
+        });
     }
-
-    pause();
-}
-
-
-fn pause()
-{
-    let mut stdout = stdout();
-    stdout.write_all(b"Press Enter to continue...").unwrap();
-    stdout.flush().unwrap();
-    stdin().read_exact(&mut [0]).unwrap();
 }

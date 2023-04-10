@@ -8,7 +8,6 @@ use crate::point::point_state::PointState;
 
 #[derive(Debug, Clone, Copy)]
 pub struct MazeOptions {
-    pub scale: usize,
     pub speed: f64,
     pub size: usize,
     pub seed: u64,
@@ -18,7 +17,6 @@ pub struct MazeOptions {
 impl Default for MazeOptions {
     fn default() -> Self {
         Self {
-            scale: 5,
             speed: 1.0,
             size: 50,
             seed: rand::random(),
@@ -79,10 +77,4 @@ pub fn rand_range(r: Range<usize>) -> usize {
     drop(rng);
 
     return out;
-}
-
-pub fn get_window_size() -> Result<usize> {
-    let MazeOptions { scale, size, .. } = get_options()?;
-
-    return Ok(scale * size);
 }
