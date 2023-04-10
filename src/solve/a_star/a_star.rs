@@ -102,6 +102,7 @@ fn node_to_path(node: &Node, start: &Point) -> Vec<Point> {
 
         curr_node = curr_node.get_parent().clone().unwrap();
     }
+
     path.push(start.clone());
     path.reverse();
     return path;

@@ -24,8 +24,8 @@ pub fn hunt_and_kill(maze: &mut Maze, window: &mut Window) -> anyhow::Result<()>
     let y = rand_range(0..cell_size) * 2 + 1;
 
     let mut pending = BinaryHeap::new();
-    pending.push(Point { x, y });
 
+    pending.push(Point { x, y });
     while !pending.is_empty() {
         let mut p = pending.pop().unwrap();
         let mut dirs = get_surrounding_walls(maze, &p)?;
@@ -51,7 +51,7 @@ pub fn hunt_and_kill(maze: &mut Maze, window: &mut Window) -> anyhow::Result<()>
         remove_wall(maze, &p, &neighbor)?;
         pending.push(neighbor);
 
-        //update_maze(window, maze, false)?;
+        update_maze(window, maze, false)?;
     }
 
     for _ in 0..25 {
