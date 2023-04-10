@@ -34,17 +34,12 @@ pub fn hunt_and_kill(maze: &mut Maze, window: &mut Window) -> anyhow::Result<()>
         if dirs.is_empty() {
             hunt_phase(window, maze, &mut p, &mut dirs, &mut adjacent_passages)?;
 
-            if dirs.is_empty() {
-                break;
-            }
+            if dirs.is_empty() { break; }
         }
 
         let rand_dir = dirs[rand_range(0..dirs.len())];
         let neighbor = go_to_dir(&p, &rand_dir)?;
-        if neighbor.is_none() {
-            println!("Neighbor null");
-            continue;
-        }
+        if neighbor.is_none() { continue; }
 
         let neighbor = neighbor.unwrap();
 
