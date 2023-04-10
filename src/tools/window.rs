@@ -70,7 +70,7 @@ fn obtain_color(point: &PointState, overwrite: &Option<VisualIndicator>) -> u32 
     if overwrite.is_some() {
         let overwrite = overwrite.unwrap();
         match overwrite {
-            VisualIndicator::SolvePath => from_u8_rgb(255, 255, 0),
+            VisualIndicator::SolvePath => from_u8_rgb(128, 0, 255),
             VisualIndicator::Searching => from_u8_rgb(0, 0, 255),
             VisualIndicator::Match => from_u8_rgb(255, 0, 255),
             VisualIndicator::End => from_u8_rgb(0, 255, 0),

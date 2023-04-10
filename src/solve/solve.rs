@@ -5,14 +5,13 @@ use crate::{tools::consts::Maze, point::point::Point};
 
 use super::a_star::a_star;
 
-pub fn solve(maze: &mut Maze, window: &mut Window, options: &SolveOptions) -> Result<()> {
+pub fn solve(maze: &mut Maze, window: &mut Window, options: &SolveOptions) -> Result<Vec<Point>> {
     let SolveOptions { algorithm, .. } = options;
     let res = match algorithm {
         SolveAlgorithm::AStar => a_star(maze, window, options)
     };
 
-    res?;
-    Ok(())
+    res
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

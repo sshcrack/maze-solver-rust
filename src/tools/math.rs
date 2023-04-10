@@ -31,6 +31,15 @@ pub fn set_point<T>(matrix: &mut [T], Point {x, y}: &Point, state: T) {
     matrix[vec2_to_numb(*x, *y, size)] = state;
 }
 
+pub fn set_point_mult<T>(matrix: &mut [T], points: &Vec<Point>, state: T)
+    where T: Clone + Copy
+{
+    for p in points {
+        set_point(matrix, p, state.clone());
+    }
+}
+
+
 pub fn get_maze_iter(size: &usize) -> StepBy<Range<usize>> {
     (1..size.clone()).step_by(2)
 }
@@ -46,4 +55,18 @@ pub fn get_dist(src: &Point, dest: &Point) -> u64 {
     let d_y = *d_y as i32;
 
     return ((s_x - d_x).abs() + (s_y - d_y).abs()).try_into().unwrap()
+}
+
+pub fn linear_dist(src: &Point, dest: &Point) -> f64 {
+    let Point { x: s_x, y: s_y} = src;
+    let Point { x: d_x, y: d_y} = dest;
+
+    let s_x = *s_x as f64;
+    let s_y = *s_y as f64;
+
+    let d_x = *d_x as f64;
+    let d_y = *d_y as f64;
+
+    let out: f64 = (d_x - s_x).pow(2) + (d_y - s_y).pow(2);
+    return out.sqrt()
 }

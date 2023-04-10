@@ -56,17 +56,20 @@ pub fn get_available_dirs_state(
     Ok(available)
 }
 
-pub fn has_passage_between(maze: &Maze, src: &Point, dir: &Direction) -> Result<Option<bool>> {
+pub fn get_pos_between(src: &Point, dir: &Direction) -> Result<Option<Point>> {
     let dest = go_to_dir(src, dir)?;
     if dest.is_none() {
         return Ok(None);
     }
 
     let DirectionData { x: dir_x, y: dir_y, .. } = dir.to_data().normalize();
-    let between = src.add(-dir_x, -dir_y);
+    Ok(src.add(-dir_x, -dir_y))
+}
 
+pub fn has_passage_between(maze: &Maze, src: &Point, dir: &Direction) -> Result<Option<bool>> {
+    let between = get_pos_between(src, dir)?;
     if between.is_none() {
-        return Ok(None);
+        return Ok(Some(false));
     }
 
     let between = between.unwrap();
