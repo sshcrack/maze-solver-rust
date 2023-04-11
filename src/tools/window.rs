@@ -1,19 +1,19 @@
+use anyhow::anyhow;
 use egui::Color32;
 
 use crate::{point::point_state::{PointState, VisualIndicator}, manager::Window};
 
 use super::{consts::{Maze, MazeOptions, get_options, FRAME_COUNT}, math::vec2_to_numb};
 
-pub fn from_u8_rgb(r: u8, g: u8, b: u8) -> u32 {
-    let (r, g, b) = (r as u32, g as u32, b as u32);
-    (r << 16) | (g << 8) | b
-}
-
 pub fn update_maze(window: &Window, maze: &Maze, intended_wait: bool) -> anyhow::Result<()> {
     update_maze_debug(window, maze, &Vec::new(), intended_wait)
 }
 
 pub fn update_maze_debug(window: &Window, maze: &Maze, visual_overwrites: &Vec<Option<VisualIndicator>>, intended_wait: bool) -> anyhow::Result<()> {
+    if window.should_exit() {
+        return Err(anyhow!("Terminated."));
+    }
+
     let MazeOptions { speed, show_animation ,.. } = get_options()?;
     if !show_animation { return Ok(()); }
 

@@ -20,20 +20,23 @@ use crate::{
 
 pub type PixelSize = Arc<RwLock<usize>>;
 pub type PixelVector = Arc<RwLock<Vec<Color32>>>;
+pub type ShouldExit = Arc<RwLock<bool>>;
 
 #[derive(Clone, Debug)]
 pub struct Window {
     size: PixelSize,
     pixels: PixelVector,
+    should_exit: ShouldExit,
     ctx: Context,
 }
 
 impl Window {
-    pub fn new(ctx: &Context, size: &PixelSize, pixels: &PixelVector) -> Self {
+    pub fn new(ctx: &Context, size: &PixelSize, pixels: &PixelVector, should_exit: &ShouldExit) -> Self {
         Self {
             ctx: ctx.clone(),
             size: size.clone(),
-            pixels: pixels.clone()
+            pixels: pixels.clone(),
+            should_exit: should_exit.clone()
         }
     }
 
@@ -45,16 +48,35 @@ impl Window {
         *self.pixels.write().unwrap() = pixels;
         self.ctx.request_repaint();
     }
+
+    pub fn should_exit(&self) -> bool {
+        let b = self.should_exit.read().unwrap().clone();
+        return b;
+    }
 }
 
 pub struct MazeThread {
     options: MazeOptions,
+    window: Window,
     thread: JoinHandle<Result<()>>,
 }
 
 impl MazeThread {
+    pub fn is_finished(&self) -> bool {
+        self.thread.is_finished()
+    }
+
+    pub fn exit_signal_sent(&self) -> bool {
+        let b = self.window.should_exit.read().unwrap().clone();
+        return b;
+    }
+
     pub fn terminate(&self) {
-        self.thread.
+        if self.exit_signal_sent() {
+            return;
+        }
+
+        *self.window.should_exit.write().unwrap() = true
     }
 
     pub fn new_default(window: &Window) -> Self {
@@ -71,11 +93,13 @@ impl MazeThread {
     }
 
     pub fn new(window: &Window, options: &MazeOptions, algorithm: SolveAlgorithm) -> Self {
+        *window.should_exit.write().unwrap() = false;
         let options = options.clone();
 
         let temp = options.clone();
         let temp1 = window.clone();
         Self {
+            window: window.clone(),
             options,
             thread: thread::spawn(move || MazeThread::main_run(temp1, temp, algorithm)),
         }
@@ -139,6 +163,7 @@ impl MazeThread {
         set_point(&mut visual_overwrites, &end, Some(VisualIndicator::End));
 
         update_maze_debug(&window, &maze, &visual_overwrites, true)?;
+        println!("Done.");
         Ok(())
     }
 }

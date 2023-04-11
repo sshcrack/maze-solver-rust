@@ -3,7 +3,7 @@ use std::collections::BinaryHeap;
 use anyhow::{Result, anyhow};
 use egui::Color32;
 
-use crate::{tools::{consts::{Maze, get_size}, matrix::{go_to_dir, get_available_dirs_state, has_passage_between, get_pos_between}, math::{set_point, point_to_numb, linear_dist}, window::{update_maze_debug, from_u8_rgb}}, solve::solve::SolveOptions, point::{point_state::{VisualIndicator, PointState}, point::Point}, manager::Window};
+use crate::{tools::{consts::{Maze, get_size}, matrix::{go_to_dir, get_available_dirs_state, has_passage_between, get_pos_between}, math::{set_point, point_to_numb, linear_dist}, window::update_maze_debug}, solve::solve::SolveOptions, point::{point_state::{VisualIndicator, PointState}, point::Point}, manager::Window};
 use super::Node;
 
 pub fn a_star(maze: &mut Maze, window: &Window, options: &SolveOptions) -> Result<Vec<Point>> {
