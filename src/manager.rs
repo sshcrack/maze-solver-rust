@@ -1,5 +1,5 @@
 use std::{
-    thread::{self, JoinHandle},
+    thread::{self, JoinHandle}, time::{Duration, Instant},
 };
 
 use anyhow::Result;
@@ -67,6 +67,7 @@ impl MazeThread {
         let end_coords = get_size(&data)? - 2;
 
         println!("Generating...");
+        let start_time = Instant::now();
         let mut maze = generate(&data)?;
 
         let start = Point { x: 1, y: 1 };
@@ -119,6 +120,8 @@ impl MazeThread {
         set_point(&mut visual_overwrites, &start, Some(VisualIndicator::Start));
         set_point(&mut visual_overwrites, &end, Some(VisualIndicator::End));
 
+        data.request_repaint();
+        data.set_time_elapsed(start_time.elapsed());
         data.set_done(true);
         while !data.should_exit() {
             if data.show_debug() {
@@ -142,8 +145,6 @@ impl MazeThread {
             }
         }
 
-        data.request_repaint();
-        data.set_gen_proc(1.0);
         println!("Done.");
         Ok(())
     }

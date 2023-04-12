@@ -1,4 +1,4 @@
-use std::sync::{RwLock, Arc};
+use std::{sync::{RwLock, Arc}, time::Duration};
 
 use egui::{Color32, Context};
 
@@ -13,6 +13,7 @@ pub type ShowAnim = Arc<RwLock<bool>>;
 pub type SpeedAnim = Arc<RwLock<f64>>;
 pub type SaveRequestedArc = Arc<RwLock<Option<String>>>;
 pub type GenerationPercentage = Arc<RwLock<f64>>;
+pub type TimeElapsedArc = Arc<RwLock<Option<Duration>>>;
 
 #[derive(Clone, Debug)]
 pub struct AnimOptions {
@@ -50,7 +51,8 @@ pub struct MazeData {
     anim: AnimOptions,
     ctx: Context,
     save_requested: SaveRequestedArc,
-    gen_proc: GenerationPercentage
+    gen_proc: GenerationPercentage,
+    time_elapsed: TimeElapsedArc
 }
 
 impl MazeData {
@@ -65,7 +67,8 @@ impl MazeData {
             anim: anim_opt.clone(),
             should_exit: should_exit.clone(),
             save_requested: SaveRequestedArc::default(),
-            gen_proc: GenerationPercentage::default()
+            gen_proc: GenerationPercentage::default(),
+            time_elapsed: TimeElapsedArc::default()
         }
     }
 
@@ -148,5 +151,13 @@ impl MazeData {
 
     pub fn get_gen_proc(&self) -> f64 {
         self.gen_proc.read().unwrap().clone()
+    }
+
+    pub fn get_time_elapsed(&self) -> Option<Duration> {
+        self.time_elapsed.read().unwrap().clone()
+    }
+
+    pub fn set_time_elapsed(&self, dur: Duration) {
+        *self.time_elapsed.write().unwrap() = Some(dur);
     }
 }

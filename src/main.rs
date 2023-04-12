@@ -416,7 +416,12 @@ impl App for MyApp {
                     let t = self.curr.as_ref().unwrap();
                     let proc = (t.get_data().get_gen_proc() * 100.0 * 100.0).round() / 100.0;
 
-                    ui.label(RichText::new(format!("{}%", proc)));
+                    let mut text = format!("{}%", proc);
+                    if t.get_data().is_done() {
+                        text = format!("{:?} elapsed", t.get_data().get_time_elapsed().unwrap());
+                    }
+
+                    ui.label(RichText::new(text));
                 }
                 self.add_image(ctx, ui);
             });
