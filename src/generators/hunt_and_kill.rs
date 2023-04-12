@@ -11,6 +11,7 @@ use super::tools::count_to_percentage;
 pub fn hunt_and_kill(maze: &mut Maze, data: &MazeData) -> anyhow::Result<()> {
     let size = get_size(data)?;
     let cell_size = (size - 1) / 2;
+    let mut last_percentage = 0.0;
 
     // making sure that passage are always on odd points
     let x = rand_range(data, 0..cell_size) * 2 + 1;
@@ -40,7 +41,8 @@ pub fn hunt_and_kill(maze: &mut Maze, data: &MazeData) -> anyhow::Result<()> {
         let rand_dir = dirs[rand_range(data, 0..dirs.len())];
         let neighbor = go_to_dir(data, &p, &rand_dir)?;
         count += 1;
-        count_to_percentage(data, size, count).and_then(|e| {
+        count_to_percentage(data, size, count, &mut last_percentage).and_then(|e| {
+            last_percentage = e;
             data.set_gen_proc(e);
             data.request_repaint();
             println!("Generation: {}%", (e * 100.0 * 100.0).round() / 100.0);
