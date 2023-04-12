@@ -74,13 +74,18 @@ fn hunt_phase(
     let size = get_size(data)?;
 
     let mut should_break = false;
-    let mut visual_overwrites = vec![None; size * size];
+    let show_anim = data.show_anim();
+
+    let desired_size = if show_anim { size * size } else { 0 };
+    let mut visual_overwrites = vec![None; desired_size];
     for x in get_maze_iter(&size) {
         for y in get_maze_iter(&size) {
             *p = Point { x, y };
             if get_point(maze, &p) == PointState::Wall {
                 *adjacent_passages = get_available_dirs_state(data, maze, p, PointState::Passage)?;
-                visual_overwrites[point_to_numb(&p, size)] = Some(VisualIndicator::Searching);
+                if show_anim  {
+                    visual_overwrites[point_to_numb(&p, size)] = Some(VisualIndicator::Searching);
+                }
 
                 if !adjacent_passages.is_empty() {
                     let passage_dir = adjacent_passages
@@ -90,7 +95,9 @@ fn hunt_phase(
 
                     *dirs = get_surrounding_walls(data, maze, &p)?;
                     if dirs.is_empty() {
-                        visual_overwrites[point_to_numb(&p, size)] = Some(VisualIndicator::SolvePath);
+                        if show_anim {
+                            visual_overwrites[point_to_numb(&p, size)] = Some(VisualIndicator::SolvePath);
+                        }
 
                         set_point(maze, &p, PointState::Passage);
                         remove_wall(data, maze, &p, &passage)?;
@@ -110,7 +117,9 @@ fn hunt_phase(
         }
     }
 
-    visual_overwrites[point_to_numb(&p, size)] = Some(VisualIndicator::Match);
+    if show_anim {
+        visual_overwrites[point_to_numb(&p, size)] = Some(VisualIndicator::Match);
+    }
     for _ in 0..5 {
         update_maze_debug(data, maze, &visual_overwrites, false)?;
     }
