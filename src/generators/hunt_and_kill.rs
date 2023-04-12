@@ -57,6 +57,8 @@ pub fn hunt_and_kill(maze: &mut Maze, data: &MazeData) -> anyhow::Result<()> {
         update_maze(data, maze, false)?;
     }
 
+    data.set_gen_proc(1.0);
+    data.request_repaint();
     for _ in 0..25 {
         update_maze(data, maze, true)?;
     }
