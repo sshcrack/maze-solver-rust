@@ -1,64 +1,25 @@
 use std::{
-    sync::{Arc, RwLock},
     thread::{self, JoinHandle},
 };
 
 use anyhow::Result;
-use egui::{Color32, Context};
+use image::{RgbaImage, ImageBuffer, Rgba, ImageFormat};
 
 use crate::{
     generators::generate::generate,
-    point::{direction::DIRECTION_VEC, point::Point, point_state::VisualIndicator},
+    point::{point::Point, point_state::VisualIndicator},
     solve::solve::{solve, SolveAlgorithm, SolveOptions},
     tools::{
-        consts::{get_size, setup_constants, MazeOptions},
-        math::{set_point, set_point_mult},
+        consts::{get_size, check_size, MazeOptions},
+        math::{set_point, set_point_mult, points_to_dir, vec2_to_numb},
         matrix::get_pos_between,
-        window::update_maze_debug,
+        window::{update_maze_overwrite, update_maze_debug_overwrite}, options::MazeData,
     },
 };
 
-pub type PixelSize = Arc<RwLock<usize>>;
-pub type PixelVector = Arc<RwLock<Vec<Color32>>>;
-pub type ShouldExit = Arc<RwLock<bool>>;
-
-#[derive(Clone, Debug)]
-pub struct Window {
-    size: PixelSize,
-    pixels: PixelVector,
-    should_exit: ShouldExit,
-    ctx: Context,
-}
-
-impl Window {
-    pub fn new(ctx: &Context, size: &PixelSize, pixels: &PixelVector, should_exit: &ShouldExit) -> Self {
-        Self {
-            ctx: ctx.clone(),
-            size: size.clone(),
-            pixels: pixels.clone(),
-            should_exit: should_exit.clone()
-        }
-    }
-
-    pub fn get_size(&self) -> usize {
-        self.size.read().unwrap().clone()
-    }
-
-    pub fn set_pixels(&self, pixels: Vec<Color32>) {
-        *self.pixels.write().unwrap() = pixels;
-        self.ctx.request_repaint();
-    }
-
-    pub fn should_exit(&self) -> bool {
-        let b = self.should_exit.read().unwrap().clone();
-        return b;
-    }
-}
-
 pub struct MazeThread {
-    options: MazeOptions,
-    window: Window,
-    thread: JoinHandle<Result<()>>,
+    data: MazeData,
+    thread: JoinHandle<Result<()>>
 }
 
 impl MazeThread {
@@ -67,8 +28,20 @@ impl MazeThread {
     }
 
     pub fn exit_signal_sent(&self) -> bool {
-        let b = self.window.should_exit.read().unwrap().clone();
-        return b;
+        self.data.should_exit()
+    }
+
+    pub fn get_options(&self) -> MazeOptions {
+        return self.data.get_opt()
+    }
+
+    #[allow(dead_code)]
+    pub fn get_data(&self) -> &MazeData {
+        &self.data
+    }
+
+    pub fn get_mut_data(&mut self) -> &mut MazeData {
+        &mut self.data
     }
 
     pub fn terminate(&self) {
@@ -76,40 +49,25 @@ impl MazeThread {
             return;
         }
 
-        *self.window.should_exit.write().unwrap() = true
+        self.data.set_should_exit(true);
     }
 
-    pub fn new_default(window: &Window) -> Self {
-        return MazeThread::new(
-            window,
-            &MazeOptions {
-                speed: 1.0,
-                size: 50,
-                seed: rand::random(),
-                show_animation: true,
-            },
-            SolveAlgorithm::AStar
-        );
-    }
+    pub fn new(data: &MazeData, algorithm: SolveAlgorithm) -> Self {
+        data.should_exit();
 
-    pub fn new(window: &Window, options: &MazeOptions, algorithm: SolveAlgorithm) -> Self {
-        *window.should_exit.write().unwrap() = false;
-        let options = options.clone();
-
-        let temp = options.clone();
-        let temp1 = window.clone();
+        let temp = data.clone();
         Self {
-            window: window.clone(),
-            options,
-            thread: thread::spawn(move || MazeThread::main_run(temp1, temp, algorithm)),
+            data: data.clone(),
+            thread: thread::spawn(move || MazeThread::main_run(temp, algorithm)),
         }
     }
 
-    pub fn main_run(window: Window, options: MazeOptions, algorithm: SolveAlgorithm) -> Result<()> {
-        setup_constants(options);
-        let end_coords = get_size()? - 2;
+    pub fn main_run(data: MazeData, algorithm: SolveAlgorithm) -> Result<()> {
+        check_size(&data);
+        let end_coords = get_size(&data)? - 2;
 
-        let mut maze = generate(&window)?;
+        println!("Generating...");
+        let mut maze = generate(&data)?;
 
         let start = Point { x: 1, y: 1 };
         let end = Point {
@@ -123,10 +81,12 @@ impl MazeThread {
             end,
         };
 
-        let size = get_size()?;
-        let path = solve(&mut maze, &window, &options)?;
+        let size = get_size(&data)?;
+        println!("Solving...");
+        let path = solve(&mut maze.1, &data, &options)?;
         let mut visual_overwrites = vec![None as Option<VisualIndicator>; size * size];
 
+        println!("Drawing...");
         for i in 0..path.len() {
             let next_index = i + 1;
             if next_index == path.len() {
@@ -136,33 +96,51 @@ impl MazeThread {
             let p = path[i];
             let n = path[next_index];
 
-            let mut dir = None;
-            for el in DIRECTION_VEC.iter() {
-                let x = n.x as i32 - p.x as i32;
-                let y = n.y as i32 - p.y as i32;
-
-                if x == el.x && y == el.y {
-                    dir = Some(el.dir);
-                }
-            }
-
+            let dir = points_to_dir(&n, &p);
             if dir.is_none() {
                 eprintln!("Could not find direction for {:?} to {:?}6", p, n);
                 continue;
             }
 
-            let between = get_pos_between(&p, &dir.unwrap())?.unwrap();
+            let between = get_pos_between(&data, &p, &dir.unwrap())?.unwrap();
             set_point_mult(
                 &mut visual_overwrites,
                 &vec![p, between, n],
                 Some(VisualIndicator::SolvePath),
             );
+
+            print!("{}", p);
+            if i != path.len() -2 { print!(" -> "); }
         }
+        println!("");
 
         set_point(&mut visual_overwrites, &start, Some(VisualIndicator::Start));
         set_point(&mut visual_overwrites, &end, Some(VisualIndicator::End));
 
-        update_maze_debug(&window, &maze, &visual_overwrites, true)?;
+        data.set_done(true);
+        while !data.should_exit() {
+            if data.show_debug() {
+                update_maze_debug_overwrite(&data, &maze.1, &visual_overwrites, true, true)?;
+            } else {
+                update_maze_overwrite(&data, &maze.1, true)?;
+            }
+
+            let save_path = data.take_requested();
+            if save_path.is_some() {
+                let save_path = save_path.unwrap();
+                let pixels = data.get_pixels();
+
+                let mut out: RgbaImage = ImageBuffer::new(size as u32, size as u32);
+                for pixel in out.enumerate_pixels_mut() {
+                    let index = vec2_to_numb(pixel.0 as usize, pixel.1 as usize, size);
+                    *pixel.2 = Rgba(pixels[index].to_array());
+                }
+
+                out.save_with_format(save_path, ImageFormat::Png).unwrap();
+            }
+        }
+
+        data.request_repaint();
         println!("Done.");
         Ok(())
     }

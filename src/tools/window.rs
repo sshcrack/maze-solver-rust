@@ -1,62 +1,62 @@
+use std::time::Duration;
+
 use anyhow::anyhow;
 use egui::Color32;
 
-use crate::{point::point_state::{PointState, VisualIndicator}, manager::Window};
+use crate::{point::{point_state::{PointState, VisualIndicator}}};
 
-use super::{consts::{Maze, MazeOptions, get_options, FRAME_COUNT}, math::vec2_to_numb};
+use super::{consts::{Maze, MazeOptions, FRAME_COUNT}, options::MazeData};
 
-pub fn update_maze(window: &Window, maze: &Maze, intended_wait: bool) -> anyhow::Result<()> {
-    update_maze_debug(window, maze, &Vec::new(), intended_wait)
+pub fn update_maze(data: &MazeData, maze: &Maze, intended_wait: bool) -> anyhow::Result<()> {
+    update_maze_debug(data, maze,  &Vec::new(), intended_wait)
 }
 
-pub fn update_maze_debug(window: &Window, maze: &Maze, visual_overwrites: &Vec<Option<VisualIndicator>>, intended_wait: bool) -> anyhow::Result<()> {
-    if window.should_exit() {
+
+pub fn update_maze_overwrite(data: &MazeData, maze: &Maze, intended_wait: bool) -> anyhow::Result<()> {
+    update_maze_debug_overwrite(data, maze, &Vec::new(), intended_wait, true)
+}
+
+
+pub fn update_maze_debug(data: &MazeData, maze: &Maze, visual_overwrites: &Vec<Option<VisualIndicator>>, intended_wait: bool) -> anyhow::Result<()> {
+    update_maze_debug_overwrite(data, maze, visual_overwrites, intended_wait, false)
+}
+
+
+pub fn update_maze_debug_overwrite(data: &MazeData, maze: &Maze, visual_overwrites: &Vec<Option<VisualIndicator>>, intended_wait: bool, overwrite: bool) -> anyhow::Result<()> {
+    if data.should_exit() {
         return Err(anyhow!("Terminated."));
     }
 
-    let MazeOptions { speed, show_animation ,.. } = get_options()?;
-    if !show_animation { return Ok(()); }
+    let show_animation = data.show_anim();
+    if !show_animation && !overwrite { return Ok(()); }
 
     let mut s = FRAME_COUNT.write().unwrap();
     *s += 1;
     let count = s.clone();
 
     drop(s);
+
+    let speed = data.speed_anim();
     if count % speed as u128 != 0 && !intended_wait { return Ok(()); }
 
-    draw_maze_overwrites(window, maze, visual_overwrites)?;
+    draw_maze_overwrites(data, maze, visual_overwrites)?;
     Ok(())
 }
 
-fn draw_maze_overwrites(window: &Window, maze: &Maze, visual_overwrites: &Vec<Option<VisualIndicator>>) -> anyhow::Result<()> {
-    let MazeOptions { size, .. } = get_options()?;
-    let buf_size = window.get_size();
-
-    let scale = buf_size / size;
-    let mut buffer = vec![Color32::BLACK; buf_size * buf_size];
+fn draw_maze_overwrites(data: &MazeData, maze: &Maze, visual_overwrites: &Vec<Option<VisualIndicator>>) -> anyhow::Result<()> {
+    let MazeOptions { size, .. } = data.get_opt();
+    let mut buffer = vec![Color32::BLACK; size * size];
 
     for pos in 0..maze.len() {
-        let x = pos % size;
-        let y = pos / size;
-
         let point = *maze.get(pos).unwrap();
         let overwrite = visual_overwrites.get(pos).unwrap_or(&None);
         let color = obtain_color(&point, overwrite);
 
-
-        let rel_x = ((x as f64) / (size as f64) * buf_size as f64) as usize;
-        let rel_y = ((y as f64) / (size as f64) * buf_size as f64) as usize;
-        for x_chunk in 0..scale {
-            for y_chunk in 0..scale {
-                let one_d = vec2_to_numb(rel_x + x_chunk, rel_y + y_chunk, buf_size);
-                let index = one_d;
-
-                buffer[index] = color;
-            }
-        }
+        buffer[pos] = color;
     }
 
-    window.set_pixels(buffer);
+    data.set_pixels(buffer);
+    std::thread::sleep(Duration::from_millis((50.0 / size as f64 * 50.0).floor() as u64));
     Ok(())
 }
 

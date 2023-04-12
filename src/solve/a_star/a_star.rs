@@ -3,18 +3,18 @@ use std::collections::BinaryHeap;
 use anyhow::{Result, anyhow};
 use egui::Color32;
 
-use crate::{tools::{consts::{Maze, get_size}, matrix::{go_to_dir, get_available_dirs_state, has_passage_between, get_pos_between}, math::{set_point, point_to_numb, linear_dist}, window::update_maze_debug}, solve::solve::SolveOptions, point::{point_state::{VisualIndicator, PointState}, point::Point}, manager::Window};
+use crate::{tools::{consts::{Maze, get_size}, matrix::{go_to_dir, get_available_dirs_state, has_passage_between, get_pos_between}, math::{set_point, point_to_numb, linear_dist, points_to_dir, get_point}, window::update_maze_debug, options::MazeData}, solve::solve::SolveOptions, point::{point_state::{VisualIndicator, PointState}, point::Point}};
 use super::Node;
 
-pub fn a_star(maze: &mut Maze, window: &Window, options: &SolveOptions) -> Result<Vec<Point>> {
+pub fn a_star(maze: &mut Maze, data: &MazeData, options: &SolveOptions) -> Result<Vec<Point>> {
     println!("Running a*");
     let SolveOptions { start, end, ..} = options;
-    let size = get_size()?;
+    let size = get_size(data)?;
 
     let mut visual_overwrites = vec![None; size * size];
     let mut nodes = Vec::with_capacity(size * size);
-    for x in 0..size {
-        for y in 0..size {
+    for y in 0..size {
+        for x in 0..size {
             nodes.push(Node::new(Point { x, y }, &end));
         }
     }
@@ -40,13 +40,13 @@ pub fn a_star(maze: &mut Maze, window: &Window, options: &SolveOptions) -> Resul
         let pos = pending.pop().unwrap();
         let node = nodes.get(point_to_numb(&pos, size)).unwrap().clone();
 
-        let dirs = get_available_dirs_state(maze, &pos, PointState::Passage)?;
+        let dirs = get_available_dirs_state(data, maze, &pos, PointState::Passage)?;
         for dir in dirs {
-            let neighbor = go_to_dir(&pos, &dir)?;
+            let neighbor = go_to_dir(data, &pos, &dir)?;
             if neighbor.is_none() { continue; }
 
-            let between_pos = get_pos_between(&pos, &dir)?.unwrap();
-            let has_passage = has_passage_between(maze, &pos, &dir)?;
+            let between_pos = get_pos_between(data, &pos, &dir)?.unwrap();
+            let has_passage = has_passage_between(data, maze, &pos, &dir)?;
 
             let has_passage = has_passage.unwrap_or(false);
             if !has_passage { continue; }
@@ -64,6 +64,9 @@ pub fn a_star(maze: &mut Maze, window: &Window, options: &SolveOptions) -> Resul
                 set_point(&mut visual_overwrites, &between_pos, Some(VisualIndicator::Custom(Color32::from_rgb(color, 0, 255))));
                 neighbor.update(&node);
                 pending.push(neighbor_pos);
+            } else {
+                drop(neighbor);
+                //clear_path(&nodes, &neighbor_pos, &mut visual_overwrites)?;
             }
 
             if &neighbor_pos == end {
@@ -73,14 +76,14 @@ pub fn a_star(maze: &mut Maze, window: &Window, options: &SolveOptions) -> Resul
                 end_node = Some(neighbor_index);
                 set_point(&mut visual_overwrites, &end, Some(VisualIndicator::End));
                 for _ in 0..100 {
-                    update_maze_debug(window, maze, &visual_overwrites, false)?;
+                    update_maze_debug(data, maze, &visual_overwrites, true)?;
                 }
                 break;
             }
         }
 
         for _ in 0..2 {
-            update_maze_debug(window, maze, &visual_overwrites, false)?;
+            update_maze_debug(data, maze, &visual_overwrites, false)?;
         }
     }
 
@@ -90,20 +93,49 @@ pub fn a_star(maze: &mut Maze, window: &Window, options: &SolveOptions) -> Resul
 
 
     let end_node = nodes.get(end_node.unwrap()).unwrap();
-    Ok(node_to_path(end_node, start))
+    Ok(node_to_path(&nodes, end_node, start))
 }
 
-fn node_to_path(node: &Node, start: &Point) -> Vec<Point> {
+fn node_to_path(nodes: &Vec<Node>, node: &Node, start: &Point) -> Vec<Point> {
     let mut path = Vec::new();
     let mut curr_node = node.clone();
 
     while curr_node.get_parent().is_some() {
-        path.push(curr_node.get_pos());
+        let pos = curr_node.get_pos();
+        if path.iter().any(|e| e == &pos) {
+            eprintln!("Duplicate tf");
+            break;
+        }
 
-        curr_node = curr_node.get_parent().clone().unwrap();
+        path.push(pos);
+
+        let parent = curr_node.get_parent().unwrap();
+        curr_node = get_point(nodes, &parent);
     }
 
     path.push(start.clone());
     path.reverse();
     return path;
+}
+
+#[allow(dead_code)]
+fn clear_path(data: &MazeData, nodes: &Vec<Node>, curr_pos: &Point, visual_overwrites: &mut Vec<Option<VisualIndicator>>) -> anyhow::Result<()> {
+    let curr = get_point(nodes, curr_pos);
+    let parent = curr.get_parent();
+    if parent.is_some() {
+        let p_pos = parent.unwrap();
+
+        let dir = points_to_dir(&curr_pos, &p_pos);
+        if dir.is_some() {
+            let dir = dir.unwrap();
+            let between = get_pos_between(data, &p_pos, &dir)?;
+            if between.is_some() {
+                let between = between.unwrap();
+                set_point(visual_overwrites, &between, None);
+            }
+        }
+    }
+
+    set_point(visual_overwrites, &curr_pos, None);
+    Ok(())
 }

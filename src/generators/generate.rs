@@ -1,12 +1,12 @@
-use crate::{tools::consts::{get_size, Maze}, point::point_state::PointState, manager::Window};
+use crate::{tools::{consts::{get_size, Maze}, options::MazeData}, point::point_state::PointState};
 
 use super::hunt_and_kill;
 
-pub fn generate(window: &Window) -> anyhow::Result<Maze> {
-    let size = get_size()?;
+pub fn generate(data: &MazeData) -> anyhow::Result<(i32, Maze)> {
+    let size = get_size(data)?;
 
     let mut maze = vec![PointState::Wall; size * size];
-    hunt_and_kill(&mut maze, window)?;
+    let count = hunt_and_kill(&mut maze, data)?;
 
-    Ok(maze)
+    Ok((count, maze))
 }

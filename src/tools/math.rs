@@ -2,14 +2,14 @@ use std::{ops::Range, iter::StepBy};
 
 use rand_distr::num_traits::Pow;
 
-use crate::point::point::Point;
+use crate::point::{point::Point, direction::{Direction, DIRECTION_VEC}};
 
 pub fn vec2_to_numb(x: usize, y: usize, size: usize) -> usize {
     return y * size + x;
 }
 
-pub fn numb_to_vec2(numb: usize, size: usize) -> (usize, usize) {
-    return (numb % size, numb / size);
+pub fn numb_to_vec2(numb: usize, size: usize) -> Point {
+    return Point {x: numb % size, y: numb / size };
 }
 
 pub fn point_to_numb(p: &Point, size: usize) -> usize {
@@ -69,4 +69,17 @@ pub fn linear_dist(src: &Point, dest: &Point) -> f64 {
 
     let out: f64 = (d_x - s_x).pow(2) + (d_y - s_y).pow(2);
     return out.sqrt()
+}
+
+pub fn points_to_dir(a: &Point, b: &Point) -> Option<Direction> {
+    let mut dir = None;
+    for el in DIRECTION_VEC.iter() {
+        let x = a.x as i32 - b.x as i32;
+        let y = a.y as i32 - b.y as i32;
+
+        if x == el.x && y == el.y {
+            dir = Some(el.dir);
+        }
+    }
+    return dir;
 }

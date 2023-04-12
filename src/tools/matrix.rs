@@ -1,13 +1,13 @@
 use anyhow::Result;
 
-use crate::point::{point::Point, point_state::PointState, direction::{Direction, DIRECTION_VEC}};
+use crate::{point::{point::Point, point_state::PointState, direction::{Direction, DIRECTION_VEC}}};
 
-use super::{consts::{Maze, get_size}, math::get_point, direction_data::DirectionData};
+use super::{consts::{Maze, get_size}, math::get_point, direction_data::DirectionData, options::MazeData};
 
 
-pub fn go_to_dir(point: &Point, dir: &Direction) -> Result<Option<Point>> {
+pub fn go_to_dir(data: &MazeData, point: &Point, dir: &Direction) -> Result<Option<Point>> {
     let mut pos = None;
-    let size = get_size()? as i32;
+    let size = get_size(data)? as i32;
     let Point { x, y } = *point;
 
     for info in DIRECTION_VEC.iter() {
@@ -28,11 +28,12 @@ pub fn go_to_dir(point: &Point, dir: &Direction) -> Result<Option<Point>> {
     return Ok(pos);
 }
 
-pub fn get_surrounding_walls(maze: &Maze, point: &Point) -> Result<Vec<Direction>> {
-    get_available_dirs_state(maze, point, PointState::Wall)
+pub fn get_surrounding_walls(data: &MazeData, maze: &Maze, point: &Point) -> Result<Vec<Direction>> {
+    get_available_dirs_state(data, maze, point, PointState::Wall)
 }
 
 pub fn get_available_dirs_state(
+    data: &MazeData,
     maze: &Maze,
     point: &Point,
     desired_state: PointState,
@@ -40,7 +41,7 @@ pub fn get_available_dirs_state(
     let mut available = Vec::new();
 
     for dir in Direction::all() {
-        let p = go_to_dir(point, &dir)?;
+        let p = go_to_dir(data, point, &dir)?;
         if p.is_none() {
             continue;
         }
@@ -56,8 +57,9 @@ pub fn get_available_dirs_state(
     Ok(available)
 }
 
-pub fn get_pos_between(src: &Point, dir: &Direction) -> Result<Option<Point>> {
-    let dest = go_to_dir(src, dir)?;
+// I hate carrying around data but I cant store it in consts file as well because I want to have multiple threads running mazes later :(
+pub fn get_pos_between(data: &MazeData, src: &Point, dir: &Direction) -> Result<Option<Point>> {
+    let dest = go_to_dir(data, src, dir)?;
     if dest.is_none() {
         return Ok(None);
     }
@@ -66,8 +68,8 @@ pub fn get_pos_between(src: &Point, dir: &Direction) -> Result<Option<Point>> {
     Ok(src.add(-dir_x, -dir_y))
 }
 
-pub fn has_passage_between(maze: &Maze, src: &Point, dir: &Direction) -> Result<Option<bool>> {
-    let between = get_pos_between(src, dir)?;
+pub fn has_passage_between(data: &MazeData, maze: &Maze, src: &Point, dir: &Direction) -> Result<Option<bool>> {
+    let between = get_pos_between(data, src, dir)?;
     if between.is_none() {
         return Ok(Some(false));
     }
