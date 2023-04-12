@@ -102,7 +102,7 @@ impl MazeThread {
                 continue;
             }
 
-            let between = get_pos_between(&data, &p, &dir.unwrap())?.unwrap();
+            let between = get_pos_between(&size, &p, &dir.unwrap())?.unwrap();
             set_point_mult(
                 &mut visual_overwrites,
                 &vec![p, between, n],

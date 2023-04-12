@@ -60,11 +60,7 @@ pub fn get_size(data: &MazeData) -> Result<usize> {
     return Ok(opt.size);
 }
 
-pub fn rand_range(data: &MazeData, r: Range<usize>) -> usize {
-    let mut opt = data.get_opt();
-
-    let out = opt.seeder.gen_range(r).clone();
-    data.write_opt(&opt);
-
-    return out;
+pub fn get_seeder(data: &MazeData) -> StdRng {
+    let opt = data.get_opt();
+    opt.seeder
 }

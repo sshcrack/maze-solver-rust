@@ -40,13 +40,13 @@ pub fn a_star(maze: &mut Maze, data: &MazeData, options: &SolveOptions) -> Resul
         let pos = pending.pop().unwrap();
         let node = nodes.get(point_to_numb(&pos, size)).unwrap().clone();
 
-        let dirs = get_available_dirs_state(data, maze, &pos, PointState::Passage)?;
+        let dirs = get_available_dirs_state(&size, maze, &pos, PointState::Passage)?;
         for dir in dirs {
-            let neighbor = go_to_dir(data, &pos, &dir)?;
+            let neighbor = go_to_dir(&size, &pos, &dir)?;
             if neighbor.is_none() { continue; }
 
-            let between_pos = get_pos_between(data, &pos, &dir)?.unwrap();
-            let has_passage = has_passage_between(data, maze, &pos, &dir)?;
+            let between_pos = get_pos_between(&size, &pos, &dir)?.unwrap();
+            let has_passage = has_passage_between(&size, maze, &pos, &dir)?;
 
             let has_passage = has_passage.unwrap_or(false);
             if !has_passage { continue; }
@@ -120,6 +120,7 @@ fn node_to_path(nodes: &Vec<Node>, node: &Node, start: &Point) -> Vec<Point> {
 
 #[allow(dead_code)]
 fn clear_path(data: &MazeData, nodes: &Vec<Node>, curr_pos: &Point, visual_overwrites: &mut Vec<Option<VisualIndicator>>) -> anyhow::Result<()> {
+    let size = get_size(&data)?;
     let curr = get_point(nodes, curr_pos);
     let parent = curr.get_parent();
     if parent.is_some() {
@@ -128,7 +129,7 @@ fn clear_path(data: &MazeData, nodes: &Vec<Node>, curr_pos: &Point, visual_overw
         let dir = points_to_dir(&curr_pos, &p_pos);
         if dir.is_some() {
             let dir = dir.unwrap();
-            let between = get_pos_between(data, &p_pos, &dir)?;
+            let between = get_pos_between(&size, &p_pos, &dir)?;
             if between.is_some() {
                 let between = between.unwrap();
                 set_point(visual_overwrites, &between, None);
