@@ -1,6 +1,9 @@
-#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
+//#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 
-use std::{sync::{Arc, RwLock}, path::PathBuf, thread};
+use std::{
+    path::PathBuf,
+    sync::{Arc, RwLock},
+};
 
 use eframe::{App, Theme};
 use egui::*;
@@ -22,6 +25,8 @@ mod manager;
 mod point;
 mod solve;
 mod tools;
+#[cfg(test)]
+mod tests;
 
 const ICON: &[u8; 324] = include_bytes!("./assets/icon.png");
 fn main() -> Result<(), eframe::Error> {
@@ -89,7 +94,7 @@ impl MyApp {
             show_debug: true,
 
             save_path: Default::default(),
-            save_file_dialog: Default::default()
+            save_file_dialog: Default::default(),
         };
 
         e.curr = Some(e.start_generating(ctx));
@@ -297,10 +302,14 @@ impl MyApp {
             match result {
                 Ok(Some(path)) => {
                     self.save_path = path;
-                    if self.curr.is_none() { eprintln!("Tried to save without curr"); }
+                    if self.curr.is_none() {
+                        eprintln!("Tried to save without curr");
+                    }
                     let thread = self.curr.as_ref().unwrap();
-                    thread.get_data().set_requested(self.save_path.to_string_lossy().to_string());
-                },
+                    thread
+                        .get_data()
+                        .set_requested(self.save_path.to_string_lossy().to_string());
+                }
                 Ok(None) => {}
                 Err(error) => {
                     eprintln!("Error selecting xplane_path: {}", error)
@@ -308,34 +317,78 @@ impl MyApp {
             }
         }
 
-        ui.horizontal(|ui| {
-            ui.set_enabled(!self.save_file_dialog.is_open() && self.curr.is_some() && self.curr.as_ref().unwrap().get_data().is_done());
-            if ui.button("Save Maze").clicked() {
-                let location = self
-                    .save_path
-                    .parent()
-                    .map(|location| location.to_path_buf());
+        ui.add_enabled_ui(
+            !self.save_file_dialog.is_open()
+                && self.curr.is_some()
+                && self.curr.as_ref().unwrap().get_data().is_done(),
+            |ui| {
+                if ui.button("Save Maze").clicked() {
+                    let location = self
+                        .save_path
+                        .parent()
+                        .map(|location| location.to_path_buf());
 
-                let temp = ctx.clone();
-                self.save_file_dialog
-                    .with_callback(move |_| temp.request_repaint())
-                    .show(|sender, dialog, callback| {
-                        let dialog = match &location {
-                            Some(location) => dialog.set_location(location),
-                            None => dialog,
-                        };
-                        let result = dialog
-                        .add_filter("PNG Image", &["png"])
-                        .show_save_single_file();
-                        callback(&result);
-                        sender
-                            .send(result)
-                            .expect("error sending show_save_single_file result to ui");
-                        drop(location)
-                    })
-                    .expect("Unable to open file_path dialog");
+                    let temp = ctx.clone();
+                    self.save_file_dialog
+                        .with_callback(move |_| temp.request_repaint())
+                        .show(|sender, dialog, callback| {
+                            let dialog = match &location {
+                                Some(location) => dialog.set_location(location),
+                                None => dialog,
+                            };
+                            let result = dialog
+                                .add_filter("PNG Image", &["png"])
+                                .show_save_single_file();
+                            callback(&result);
+                            sender
+                                .send(result)
+                                .expect("error sending show_save_single_file result to ui");
+                            drop(location)
+                        })
+                        .expect("Unable to open file_path dialog");
+                }
+            },
+        );
+    }
+
+    fn add_gen_button(&mut self, ui: &mut Ui, ctx: &Context) {
+        let mut text = "Generate";
+        if self.curr.is_some() {
+            let thread = self.curr.as_ref().unwrap();
+            let signal_sent = thread.exit_signal_sent();
+
+            let is_done = thread.get_data().is_done();
+            if !is_done {
+                if signal_sent {
+                    text = "Stopping...";
+                } else {
+                    text = "Stop";
+                }
             }
-        });
+
+            if thread.is_finished() && signal_sent {
+                println!("Setting curr to None");
+                // If was done = User requested new maze
+                self.curr = if is_done {
+                    Some(self.start_generating(&ctx))
+                } else {
+                    None
+                }
+            }
+        }
+
+        let res = ui.button(text);
+        if res.clicked() {
+            if self.curr.is_some() {
+                let thread = self.curr.as_ref().unwrap();
+                thread.terminate();
+                if self.seed_random {
+                    self.regenerate_seed();
+                }
+            } else {
+                self.curr = Some(self.start_generating(&ctx));
+            }
+        }
     }
 }
 
@@ -347,7 +400,10 @@ impl App for MyApp {
             self.add_size_selector(ui, frame);
             self.add_speed_selector(ui, frame);
             self.add_show_animation(ui);
-            self.add_save_button(ui, ctx);
+            ui.horizontal(|ui| {
+                self.add_save_button(ui, ctx);
+                self.add_gen_button(ui, ctx);
+            });
 
             let check = ui.checkbox(&mut self.show_debug, "Show debug?");
             if check.changed() && self.curr.is_some() {
@@ -355,45 +411,15 @@ impl App for MyApp {
                 c.get_mut_data().set_show_debug(self.show_debug);
             }
 
-            let mut text = "Generate";
-            if self.curr.is_some() {
-                let thread = self.curr.as_ref().unwrap();
-                let signal_sent = thread.exit_signal_sent();
-
-                let is_done = thread.get_data().is_done();
-                if !is_done {
-                    if signal_sent {
-                        text = "Stopping...";
-                    } else {
-                        text = "Stop";
-                    }
-                }
-
-                if thread.is_finished() && signal_sent {
-                    println!("Setting curr to None");
-                    // If was done = User requested new maze
-                    self.curr = if is_done {
-                        Some(self.start_generating(&ctx))
-                    } else {
-                        None
-                    }
-                }
-            }
-
-            let res = ui.button(text);
-            if res.clicked() {
+            ui.vertical_centered_justified(|ui| {
                 if self.curr.is_some() {
-                    let thread = self.curr.as_ref().unwrap();
-                    thread.terminate();
-                    if self.seed_random {
-                        self.regenerate_seed();
-                    }
-                } else {
-                    self.curr = Some(self.start_generating(&ctx));
-                }
-            }
+                    let t = self.curr.as_ref().unwrap();
+                    let proc = (t.get_data().get_gen_proc() * 100.0 * 100.0).round() / 100.0;
 
-            self.add_image(ctx, ui);
+                    ui.label(RichText::new(format!("{}%", proc)));
+                }
+                self.add_image(ctx, ui);
+            });
         });
     }
 }

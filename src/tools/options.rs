@@ -12,6 +12,7 @@ pub type ShowDebug = Arc<RwLock<bool>>;
 pub type ShowAnim = Arc<RwLock<bool>>;
 pub type SpeedAnim = Arc<RwLock<f64>>;
 pub type SaveRequestedArc = Arc<RwLock<Option<String>>>;
+pub type GenerationPercentage = Arc<RwLock<f64>>;
 
 #[derive(Clone, Debug)]
 pub struct AnimOptions {
@@ -49,6 +50,7 @@ pub struct MazeData {
     anim: AnimOptions,
     ctx: Context,
     save_requested: SaveRequestedArc,
+    gen_proc: GenerationPercentage
 }
 
 impl MazeData {
@@ -62,7 +64,8 @@ impl MazeData {
             maze_opt: Arc::new(RwLock::new(maze_opt.clone())),
             anim: anim_opt.clone(),
             should_exit: should_exit.clone(),
-            save_requested: SaveRequestedArc::default()
+            save_requested: SaveRequestedArc::default(),
+            gen_proc: GenerationPercentage::default()
         }
     }
 
@@ -137,5 +140,13 @@ impl MazeData {
 
     pub fn request_repaint(&self) {
         self.ctx.request_repaint();
+    }
+
+    pub fn set_gen_proc(&self, proc: f64) {
+        *self.gen_proc.write().unwrap() = proc;
+    }
+
+    pub fn get_gen_proc(&self) -> f64 {
+        self.gen_proc.read().unwrap().clone()
     }
 }

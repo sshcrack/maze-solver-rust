@@ -3,12 +3,9 @@ use std::{sync::{Arc, RwLock}, fs::File, io::Write};
 use eframe::{App, Theme};
 use egui::*;
 use generators::generate::generate;
-use manager::{MazeThread, Window};
-use solve::solve::SolveAlgorithm;
-use tools::consts::MazeOptions;
+use manager::{MazeThread};
 
-use crate::tools::consts::setup_constants;
-
+use crate::tools::{options::{MazeData, AnimOptions}, consts::MazeOptions};
 mod generators;
 mod manager;
 mod point;
@@ -18,18 +15,23 @@ mod tools;
 fn main() -> anyhow::Result<()> {
     let mut out = "iteration;val\n".to_string();
     let mut old = 0;
-    for i in (2..100).step_by(2) {
-        setup_constants(MazeOptions { speed: 1.0, size: i, seed: 0, show_animation: false });
-        let window = Window::new(&Context::default(), &Arc::new(RwLock::new(0)), &Arc::new(RwLock::new(Vec::new())), &Arc::new(RwLock::new(false)));
-        let maze = generate(&window)?;
+    for i in (10..100).step_by(2) {
 
-        print!("{},", maze.0 - old);
+        let data = MazeData::new(
+            &Context::default(),
+            &Arc::new(RwLock::new(Vec::new())),
+            &MazeOptions::new(i, rand::random()),
+            &AnimOptions::new(false, false, 1.0)
+        );
+        let maze = generate(&data)?;
+
+        print!("{},{}\n", i, maze.0 - old);
         out += &format!("{};{}\n", i, maze.0);
         old = maze.0;
     }
 
 
-    let mut file = File::create("out.csv")?;
-    file.write_all(out.as_bytes());
+    let mut file = File::create("target/out.csv")?;
+    file.write_all(out.as_bytes())?;
     Ok(())
 }

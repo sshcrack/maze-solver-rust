@@ -2,18 +2,13 @@ use std::collections::BinaryHeap;
 
 use anyhow::{anyhow, Result};
 use crate::{
-    point::{
-        direction::Direction,
-        point::Point,
-        point_state::{PointState, VisualIndicator},
-    },
-    tools::{
-        consts::{Maze, rand_range, get_size},
-        math::{get_maze_iter, vec2_to_numb, point_to_numb, get_point, set_point}, window::{update_maze_debug, update_maze}, matrix::{go_to_dir, get_surrounding_walls, get_available_dirs_state}, options::MazeData
-    }
+    point::{direction::Direction,point::Point,point_state::{PointState, VisualIndicator}},
+    tools::{consts::{Maze, rand_range, get_size},math::{get_maze_iter, vec2_to_numb, point_to_numb, get_point, set_point}, window::{update_maze_debug, update_maze}, matrix::{go_to_dir, get_surrounding_walls, get_available_dirs_state}, options::MazeData}
 };
 
-pub fn hunt_and_kill(maze: &mut Maze, data: &MazeData) -> anyhow::Result<i32> {
+use super::tools::count_to_percentage;
+
+pub fn hunt_and_kill(maze: &mut Maze, data: &MazeData) -> anyhow::Result<()> {
     let size = get_size(data)?;
     let cell_size = (size - 1) / 2;
 
@@ -21,7 +16,7 @@ pub fn hunt_and_kill(maze: &mut Maze, data: &MazeData) -> anyhow::Result<i32> {
     let x = rand_range(data, 0..cell_size) * 2 + 1;
     let y = rand_range(data, 0..cell_size) * 2 + 1;
 
-    let mut count = 0;
+    let mut count = 0 as u64;
     let mut pending = BinaryHeap::new();
 
     pending.push(Point { x, y });
@@ -45,6 +40,13 @@ pub fn hunt_and_kill(maze: &mut Maze, data: &MazeData) -> anyhow::Result<i32> {
         let rand_dir = dirs[rand_range(data, 0..dirs.len())];
         let neighbor = go_to_dir(data, &p, &rand_dir)?;
         count += 1;
+        count_to_percentage(data, size, count).and_then(|e| {
+            data.set_gen_proc(e);
+            data.request_repaint();
+            println!("Generation: {}%", (e * 100.0 * 100.0).round() / 100.0);
+            Some(())
+        });
+
         if neighbor.is_none() { continue; }
 
         let neighbor = neighbor.unwrap();
@@ -59,7 +61,7 @@ pub fn hunt_and_kill(maze: &mut Maze, data: &MazeData) -> anyhow::Result<i32> {
         update_maze(data, maze, true)?;
     }
 
-    return Ok(count);
+    return Ok(());
 }
 
 fn hunt_phase(

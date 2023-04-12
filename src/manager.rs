@@ -83,7 +83,7 @@ impl MazeThread {
 
         let size = get_size(&data)?;
         println!("Solving...");
-        let path = solve(&mut maze.1, &data, &options)?;
+        let path = solve(&mut maze, &data, &options)?;
         let mut visual_overwrites = vec![None as Option<VisualIndicator>; size * size];
 
         println!("Drawing...");
@@ -109,8 +109,10 @@ impl MazeThread {
                 Some(VisualIndicator::SolvePath),
             );
 
-            print!("{}", p);
-            if i != path.len() -2 { print!(" -> "); }
+            if data.show_debug() {
+                print!("{}", p);
+                if i != path.len() -2 { print!(" -> "); }
+            }
         }
         println!("");
 
@@ -120,9 +122,9 @@ impl MazeThread {
         data.set_done(true);
         while !data.should_exit() {
             if data.show_debug() {
-                update_maze_debug_overwrite(&data, &maze.1, &visual_overwrites, true, true)?;
+                update_maze_debug_overwrite(&data, &maze, &visual_overwrites, true, true)?;
             } else {
-                update_maze_overwrite(&data, &maze.1, true)?;
+                update_maze_overwrite(&data, &maze, true)?;
             }
 
             let save_path = data.take_requested();
@@ -141,6 +143,7 @@ impl MazeThread {
         }
 
         data.request_repaint();
+        data.set_gen_proc(1.0);
         println!("Done.");
         Ok(())
     }
