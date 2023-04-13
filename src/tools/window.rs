@@ -67,7 +67,7 @@ fn obtain_color(point: &PointState, overwrite: &Option<VisualIndicator>) -> Colo
     if overwrite.is_some() {
         let overwrite = overwrite.unwrap();
         match overwrite {
-            VisualIndicator::SolvePath => Color32::from_rgb(128, 0, 255),
+            VisualIndicator::SolvePath => Color32::from_rgb(255, 128, 0),
             VisualIndicator::Searching => Color32::from_rgb(0, 0, 255),
             VisualIndicator::Match => Color32::from_rgb(255, 0, 255),
             VisualIndicator::End => Color32::from_rgb(0, 255, 0),

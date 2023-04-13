@@ -84,8 +84,7 @@ impl MazeThread {
 
         let size = get_size(&data)?;
         println!("Solving...");
-        let path = solve(&mut maze, &data, &options)?;
-        let mut visual_overwrites = vec![None as Option<VisualIndicator>; size * size];
+        let (path, mut visual_overwrites) = solve(&mut maze, &data, &options)?;
 
         println!("Drawing...");
         for i in 0..path.len() {

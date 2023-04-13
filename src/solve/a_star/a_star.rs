@@ -6,7 +6,7 @@ use egui::Color32;
 use crate::{tools::{consts::{Maze, get_size}, matrix::{go_to_dir, get_available_dirs_state, has_passage_between, get_pos_between}, math::{set_point, point_to_numb, linear_dist, points_to_dir, get_point}, window::update_maze_debug, options::MazeData}, solve::solve::SolveOptions, point::{point_state::{VisualIndicator, PointState}, point::Point}};
 use super::Node;
 
-pub fn a_star(maze: &mut Maze, data: &MazeData, options: &SolveOptions) -> Result<Vec<Point>> {
+pub fn a_star(maze: &mut Maze, data: &MazeData, options: &SolveOptions) -> Result<(Vec<Point>, Vec<Option<VisualIndicator>>)> {
     println!("Running a*");
     let SolveOptions { start, end, ..} = options;
     let size = get_size(data)?;
@@ -95,7 +95,7 @@ pub fn a_star(maze: &mut Maze, data: &MazeData, options: &SolveOptions) -> Resul
 
 
     let end_node = nodes.get(end_node.unwrap()).unwrap();
-    Ok(node_to_path(&nodes, end_node, start))
+    Ok((node_to_path(&nodes, end_node, start), visual_overwrites))
 }
 
 fn node_to_path(nodes: &Vec<Node>, node: &Node, start: &Point) -> Vec<Point> {
