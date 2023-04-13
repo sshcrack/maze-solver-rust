@@ -19,6 +19,7 @@ lazy_static! {
 pub struct MazeOptions {
     pub size: usize,
     pub seed: u64,
+    pub decimate: usize,
     seeder: StdRng,
 }
 
@@ -27,6 +28,7 @@ impl Default for MazeOptions {
         let rand = rand::random();
         Self {
             size: 50,
+            decimate: 15,
             seed: rand,
             seeder: StdRng::seed_from_u64(rand)
         }
@@ -34,9 +36,10 @@ impl Default for MazeOptions {
 }
 
 impl MazeOptions {
-    pub fn new(size: usize, seed: u64) -> Self {
+    pub fn new(size: usize, seed: u64, decimate: usize) -> Self {
         Self {
             size,
+            decimate,
             seed,
             seeder: StdRng::seed_from_u64(seed)
         }
@@ -66,4 +69,11 @@ pub fn get_size(data: &MazeData) -> Result<usize> {
 pub fn get_seeder(data: &MazeData) -> StdRng {
     let opt = data.get_opt();
     opt.seeder
+}
+
+pub fn set_seeder(data: &MazeData, seeder: StdRng) {
+    let mut e = data.get_opt();
+    e.seeder = seeder;
+
+    data.write_opt(&e);
 }

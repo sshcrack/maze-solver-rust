@@ -7,7 +7,7 @@ use crate::{
         point_state::{PointState, VisualIndicator},
     },
     tools::{
-        consts::{get_seeder, get_size, Maze},
+        consts::{get_seeder, get_size, Maze, set_seeder},
         math::{point_to_numb, set_point, vec2_to_numb},
         matrix::{get_available_dirs_state, get_surrounding_walls, go_to_dir},
         options::MazeData,
@@ -88,6 +88,7 @@ pub fn hunt_and_kill(maze: &mut Maze, data: &MazeData) -> anyhow::Result<()> {
         update_maze(data, maze, false)?;
     }
 
+    set_seeder(data, seeder);
     data.set_gen_proc(1.0);
     data.request_repaint();
     for _ in 0..25 {

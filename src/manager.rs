@@ -6,7 +6,7 @@ use anyhow::Result;
 use image::ImageFormat;
 
 use crate::{
-    generators::generate::generate,
+    generators::{generate::generate, decimate::decimate_maze},
     point::{point::Point, point_state::VisualIndicator},
     solve::solve::{solve, SolveAlgorithm, SolveOptions},
     tools::{
@@ -69,6 +69,9 @@ impl MazeThread {
         println!("Generating...");
         let start_time = Instant::now();
         let mut maze = generate(&data)?;
+        let size = get_size(&data)?;
+
+        decimate_maze(&data, &mut maze, size);
 
         let start = Point { x: 1, y: 1 };
         let end = Point {
@@ -82,7 +85,6 @@ impl MazeThread {
             end,
         };
 
-        let size = get_size(&data)?;
         println!("Solving...");
         let (path, mut visual_overwrites) = solve(&mut maze, &data, &options)?;
 

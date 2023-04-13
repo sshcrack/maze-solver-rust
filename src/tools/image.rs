@@ -30,7 +30,7 @@ pub fn img_to_maze(img: DynamicImage) -> Result<(Maze, MazeOptions)> {
     }
 
     let size: usize = dim.0.try_into()?;
-    let opt = MazeOptions::new(size, u64::MAX);
+    let opt = MazeOptions::new(size, u64::MAX, 0);
 
     let total_pixels = size * size;
     let mut counter = 0 as u64;

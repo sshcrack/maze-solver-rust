@@ -4,6 +4,16 @@ use crate::{point::{point::Point, point_state::PointState, direction::{Direction
 
 use super::{consts::Maze, math::get_point, direction_data::DirectionData};
 
+pub fn get_stat_dir(maze: &Maze, size: &usize, point: &Point, dir: &Direction) -> Option<PointState> {
+    let next = go_to_dir(size, point, dir);
+    if next.is_none() {
+        return None;
+    }
+
+    let next = next.unwrap();
+    Some(get_point(maze, &next))
+}
+
 
 pub fn go_to_dir(size: &usize, point: &Point, dir: &Direction) -> Option<Point> {
     let mut pos = None;
