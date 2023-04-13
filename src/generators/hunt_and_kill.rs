@@ -17,7 +17,7 @@ use crate::{
 use anyhow::{anyhow, Result};
 use rand::Rng;
 
-use super::tools::count_to_percentage;
+use super::tools::{count_to_percentage, rand_el};
 
 pub fn hunt_and_kill(maze: &mut Maze, data: &MazeData) -> anyhow::Result<()> {
     let size = get_size(data)?;
@@ -64,7 +64,7 @@ pub fn hunt_and_kill(maze: &mut Maze, data: &MazeData) -> anyhow::Result<()> {
             }
         }
 
-        let rand_dir = dirs[seeder.gen_range(0..dirs.len())];
+        let rand_dir = rand_el(&mut seeder, &dirs);
         let neighbor = go_to_dir(&size, &p, &rand_dir);
         count += 1;
         count_to_percentage(data, size, count, &mut last_percentage).and_then(|e| {

@@ -3,7 +3,7 @@ use std::{
 };
 
 use anyhow::Result;
-use image::{RgbaImage, ImageBuffer, Rgba, ImageFormat};
+use image::ImageFormat;
 
 use crate::{
     generators::generate::generate,
@@ -11,9 +11,9 @@ use crate::{
     solve::solve::{solve, SolveAlgorithm, SolveOptions},
     tools::{
         consts::{get_size, check_size, MazeOptions},
-        math::{set_point, set_point_mult, points_to_dir, vec2_to_numb},
+        math::{set_point, set_point_mult, points_to_dir},
         matrix::get_pos_between,
-        window::update_maze_debug_overwrite, options::MazeData,
+        window::update_maze_debug_overwrite, options::MazeData, image::maze_to_img,
     },
 };
 
@@ -129,13 +129,7 @@ impl MazeThread {
             let save_path = data.take_requested();
             if save_path.is_some() {
                 let save_path = save_path.unwrap();
-                let pixels = data.get_pixels();
-
-                let mut out: RgbaImage = ImageBuffer::new(size as u32, size as u32);
-                for pixel in out.enumerate_pixels_mut() {
-                    let index = vec2_to_numb(pixel.0 as usize, pixel.1 as usize, size);
-                    *pixel.2 = Rgba(pixels[index].to_array());
-                }
+                let out = maze_to_img(&data, &maze, &visual_overwrites)?;
 
                 out.save_with_format(save_path, ImageFormat::Png).unwrap();
             }

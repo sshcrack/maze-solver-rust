@@ -75,8 +75,10 @@ pub fn a_star(maze: &mut Maze, data: &MazeData, options: &SolveOptions) -> Resul
 
                 end_node = Some(neighbor_index);
                 set_point(&mut visual_overwrites, &end, Some(VisualIndicator::End));
-                for _ in 0..100 {
-                    update_maze_debug(data, maze, &visual_overwrites, true)?;
+                if data.show_anim() {
+                    for _ in 0..100 {
+                        update_maze_debug(data, maze, &visual_overwrites, true)?;
+                    }
                 }
                 break;
             }

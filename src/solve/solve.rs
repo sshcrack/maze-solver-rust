@@ -24,3 +24,21 @@ pub struct SolveOptions {
     pub end: Point,
     pub algorithm: SolveAlgorithm
 }
+
+impl SolveOptions {
+    pub fn new(size: usize) -> Self {
+        let end_coords = size - 2;
+
+        let start = Point { x: 1, y: 1 };
+        let end = Point {
+            x: end_coords,
+            y: end_coords,
+        };
+
+        SolveOptions {
+            algorithm: SolveAlgorithm::AStar,
+            start,
+            end,
+        }
+    }
+}

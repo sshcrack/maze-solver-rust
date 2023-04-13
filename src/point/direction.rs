@@ -1,10 +1,6 @@
-use std::collections::HashMap;
-
 use lazy_static::lazy_static;
 
 use crate::tools::direction_data::DirectionData;
-
-use super::point::Point;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Direction {
