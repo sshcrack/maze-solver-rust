@@ -8,11 +8,11 @@ use crate::{
     },
     tools::{
         consts::{get_seeder, get_size, Maze},
-        math::{get_point, point_to_numb, set_point, vec2_to_numb},
+        math::{point_to_numb, set_point, vec2_to_numb},
         matrix::{get_available_dirs_state, get_surrounding_walls, go_to_dir},
         options::MazeData,
         window::{update_maze, update_maze_debug},
-    }, generators::tools::rand_el,
+    }
 };
 use anyhow::{anyhow, Result};
 use rand::{rngs::StdRng, Rng};

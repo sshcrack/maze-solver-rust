@@ -38,9 +38,11 @@ pub fn get_available_dirs_state(
     point: &Point,
     desired_state: PointState,
 ) -> anyhow::Result<Vec<Direction>> {
-    let mut available = Vec::new();
+    let all = Direction::all();
+    let all_dir = all.len();
 
-    for dir in Direction::all() {
+    let mut available = Vec::with_capacity(all_dir);
+    for dir in all {
         let p = go_to_dir(size, point, &dir)?;
         if p.is_none() {
             continue;

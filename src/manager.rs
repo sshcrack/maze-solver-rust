@@ -124,11 +124,7 @@ impl MazeThread {
         data.set_time_elapsed(start_time.elapsed());
         data.set_done(true);
         while !data.should_exit() {
-            if data.show_debug() {
-                update_maze_debug_overwrite(&data, &maze, &visual_overwrites, true, true)?;
-            } else {
-                update_maze_overwrite(&data, &maze, true)?;
-            }
+            update_maze_debug_overwrite(&data, &maze, &visual_overwrites, true, true)?;
 
             let save_path = data.take_requested();
             if save_path.is_some() {
