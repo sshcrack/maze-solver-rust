@@ -8,6 +8,13 @@ use crate::{point::point_state::PointState};
 
 use super::options::MazeData;
 
+
+pub const MAX_WAIT_TIME: f64 = 1500.0;
+lazy_static! {
+    pub static ref FRAME_COUNT: FrameCount = FrameCount::default();
+}
+
+
 #[derive(Debug, Clone)]
 pub struct MazeOptions {
     pub size: usize,
@@ -40,10 +47,6 @@ pub type MazeOptionsArc = Arc<RwLock<MazeOptions>>;
 pub type FrameCount = Arc<RwLock<u128>>;
 pub type Maze = Vec<PointState>;
 
-
-lazy_static! {
-    pub static ref FRAME_COUNT: FrameCount = FrameCount::default();
-}
 
 
 pub fn check_size(data: &MazeData) {

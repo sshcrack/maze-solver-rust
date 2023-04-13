@@ -89,7 +89,7 @@ impl MyApp {
 
             show_animation: true,
 
-            speed: 1.0,
+            speed: 0.975,
             speed_text: "1.0".to_string(),
             show_debug: true,
 

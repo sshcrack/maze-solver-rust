@@ -3,7 +3,7 @@ use std::time::Duration;
 use anyhow::anyhow;
 use egui::Color32;
 
-use crate::{point::{point_state::{PointState, VisualIndicator}}};
+use crate::{point::{point_state::{PointState, VisualIndicator}}, tools::consts::MAX_WAIT_TIME};
 
 use super::{consts::{Maze, MazeOptions, FRAME_COUNT}, options::MazeData};
 
@@ -37,9 +37,13 @@ pub fn update_maze_debug_overwrite(data: &MazeData, maze: &Maze, visual_overwrit
     drop(s);
 
     let speed = data.speed_anim();
-    if count % speed as u128 != 0 && !intended_wait { return Ok(()); }
+    if count % (speed as u128).max(1) != 0 && !intended_wait { return Ok(()); }
 
     draw_maze_overwrites(data, maze, visual_overwrites)?;
+    if speed < 1.0 {
+        let millis = (1.0 - speed) * MAX_WAIT_TIME;
+        std::thread::sleep(Duration::from_millis(millis.floor() as u64));
+    }
     Ok(())
 }
 
@@ -56,7 +60,6 @@ fn draw_maze_overwrites(data: &MazeData, maze: &Maze, visual_overwrites: &Vec<Op
     }
 
     data.set_pixels(buffer);
-    std::thread::sleep(Duration::from_millis((50.0 / size as f64 * 50.0).floor() as u64));
     Ok(())
 }
 

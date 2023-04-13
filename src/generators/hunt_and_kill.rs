@@ -8,11 +8,11 @@ use crate::{
     },
     tools::{
         consts::{get_seeder, get_size, Maze},
-        math::{get_maze_iter, get_point, point_to_numb, set_point, vec2_to_numb},
+        math::{get_point, point_to_numb, set_point, vec2_to_numb},
         matrix::{get_available_dirs_state, get_surrounding_walls, go_to_dir},
         options::MazeData,
         window::{update_maze, update_maze_debug},
-    },
+    }, generators::tools::rand_el,
 };
 use anyhow::{anyhow, Result};
 use rand::{rngs::StdRng, Rng};
@@ -31,17 +31,14 @@ pub fn hunt_and_kill(maze: &mut Maze, data: &MazeData) -> anyhow::Result<()> {
 
     let mut count = 0 as u64;
     let mut pending = BinaryHeap::new();
+    let mut to_hunt = BinaryHeap::new();
 
-    let mut unchecked = Vec::new();
     let mut show_anim = data.show_anim();
 
-    for y in get_maze_iter(&size) {
-        for x in get_maze_iter(&size) {
-            unchecked.push(Point { x, y })
-        }
-    }
+    let start_p = Point { x, y };
+    pending.push(start_p.clone());
+    to_hunt.push(start_p);
 
-    pending.push(Point { x, y });
     let mut update_rng = rand::thread_rng();
     while !pending.is_empty() {
         if update_rng.gen_bool(0.3) {
@@ -50,7 +47,6 @@ pub fn hunt_and_kill(maze: &mut Maze, data: &MazeData) -> anyhow::Result<()> {
 
         let mut p = pending.pop().unwrap();
         let mut dirs = get_surrounding_walls(&size, maze, &p)?;
-        let mut adjacent_passages = get_available_dirs_state(&size, maze, &p, PointState::Passage)?;
 
         if dirs.is_empty() {
             hunt_phase(
@@ -61,8 +57,7 @@ pub fn hunt_and_kill(maze: &mut Maze, data: &MazeData) -> anyhow::Result<()> {
                 maze,
                 &mut p,
                 &mut dirs,
-                &mut adjacent_passages,
-                &mut unchecked,
+                &mut to_hunt,
             )?;
 
             if dirs.is_empty() {
@@ -89,6 +84,7 @@ pub fn hunt_and_kill(maze: &mut Maze, data: &MazeData) -> anyhow::Result<()> {
 
         remove_wall(size, maze, &p, &neighbor)?;
         pending.push(neighbor);
+        to_hunt.push(neighbor);
 
         update_maze(data, maze, false)?;
     }
@@ -108,56 +104,58 @@ fn hunt_phase(
     show_anim: bool,
     seeder: &mut StdRng,
     maze: &mut Maze,
-    p: &mut Point,
+    out: &mut Point,
     dirs: &mut Vec<Direction>,
-    adjacent_passages: &mut Vec<Direction>,
-    unchecked: &mut Vec<Point>,
+    to_hunt: &mut BinaryHeap<Point>,
 ) -> Result<()> {
     let desired_size = if show_anim { size * size } else { 0 };
     let mut visual_overwrites = vec![None; desired_size];
-    for i in 0..unchecked.len() {
-        *p = unchecked[i];
-        if get_point(maze, &p) == PointState::Wall {
-            *adjacent_passages = get_available_dirs_state(&size, maze, &p, PointState::Passage)?;
-            if show_anim {
-                visual_overwrites[point_to_numb(&p, size)] = Some(VisualIndicator::Searching);
-            }
 
-            if !adjacent_passages.is_empty() {
-                let passage_dir = adjacent_passages
-                    .get(seeder.gen_range(0..adjacent_passages.len()))
-                    .unwrap();
-                let passage = go_to_dir(&size, &p, passage_dir)?.unwrap();
 
-                *dirs = get_surrounding_walls(&size, maze, &p)?;
-                if dirs.is_empty() {
-                    if show_anim {
-                        visual_overwrites[point_to_numb(&p, size)] =
-                            Some(VisualIndicator::SolvePath);
-                    }
-
-                    set_point(maze, &p, PointState::Passage);
-                    remove_wall(size, maze, &p, &passage)?;
-                    *adjacent_passages = vec![];
-                    continue;
-                }
-
-                unchecked.remove(i);
-                remove_wall(size, maze, &p, &passage)?;
-                break;
-            }
+    let all_dirs = Direction::all().len();
+    let mut tried = Vec::new();
+    while !to_hunt.is_empty() {
+        let p =  to_hunt.pop().unwrap();
+        if show_anim {
+            visual_overwrites[point_to_numb(&p, size)] = Some(VisualIndicator::Searching);
         }
+
+        let passages = get_available_dirs_state(&size, maze, &p, PointState::Passage)?;
+        if passages.is_empty() {
+            return Err(anyhow!("No passages and somehow no walls ?!?!?"))
+        }
+
+        *dirs = get_surrounding_walls(&size, maze, &p)?;
+        if dirs.is_empty() {
+            if passages.len() != all_dirs {
+                tried.push(p);
+                continue;
+            }
+            if show_anim {
+                visual_overwrites[point_to_numb(&p, size)] = Some(VisualIndicator::SolvePath);
+            }
+
+
+            set_point(maze, &p, PointState::Passage);
+            continue;
+        }
+
+        *out = p;
+        break;
+    }
+
+    for e in tried {
+        to_hunt.push(e);
     }
 
     if show_anim {
-        visual_overwrites[point_to_numb(&p, size)] = Some(VisualIndicator::Match);
+        visual_overwrites[point_to_numb(&out, size)] = Some(VisualIndicator::Match);
         for _ in 0..5 {
             update_maze_debug(data, maze, &visual_overwrites, false)?;
         }
     }
 
     Ok(())
-    //println!("Should kill dirs {:?}", dirs);
 }
 
 pub fn remove_wall(size: usize, maze: &mut Maze, from: &Point, to: &Point) -> Result<()> {

@@ -1,3 +1,5 @@
+use rand::{rngs::StdRng, Rng};
+
 use crate::tools::options::MazeData;
 
 pub fn count_to_percentage(data: &MazeData, size: usize, count: u64, last_percentage: &mut f64) -> Option<f64> {
@@ -13,4 +15,12 @@ pub fn count_to_percentage(data: &MazeData, size: usize, count: u64, last_percen
 
 
     Some(rounded)
+}
+
+pub fn rand_el<T>(seeder: &mut StdRng, arr: &[T]) -> T
+    where
+    T: Copy
+{
+    let index = seeder.gen_range(0..arr.len());
+    return arr[index];
 }
