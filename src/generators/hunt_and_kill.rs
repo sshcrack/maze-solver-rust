@@ -1,11 +1,21 @@
 use std::collections::BinaryHeap;
 
-use anyhow::{anyhow, Result};
-use rand::{Rng, rngs::StdRng};
 use crate::{
-    point::{direction::Direction,point::Point,point_state::{PointState, VisualIndicator}},
-    tools::{consts::{Maze, get_size, get_seeder},math::{get_maze_iter, vec2_to_numb, point_to_numb, get_point, set_point}, window::{update_maze_debug, update_maze}, matrix::{go_to_dir, get_surrounding_walls, get_available_dirs_state}, options::MazeData}
+    point::{
+        direction::Direction,
+        point::Point,
+        point_state::{PointState, VisualIndicator},
+    },
+    tools::{
+        consts::{get_seeder, get_size, Maze},
+        math::{get_maze_iter, get_point, point_to_numb, set_point, vec2_to_numb},
+        matrix::{get_available_dirs_state, get_surrounding_walls, go_to_dir},
+        options::MazeData,
+        window::{update_maze, update_maze_debug},
+    },
 };
+use anyhow::{anyhow, Result};
+use rand::{rngs::StdRng, Rng};
 
 use super::tools::count_to_percentage;
 
@@ -22,6 +32,13 @@ pub fn hunt_and_kill(maze: &mut Maze, data: &MazeData) -> anyhow::Result<()> {
     let mut count = 0 as u64;
     let mut pending = BinaryHeap::new();
 
+    let mut unchecked = Vec::new();
+    for y in get_maze_iter(&size) {
+        for x in get_maze_iter(&size) {
+            unchecked.push(Point { x, y })
+        }
+    }
+
     pending.push(Point { x, y });
     while !pending.is_empty() {
         let mut p = pending.pop().unwrap();
@@ -35,10 +52,13 @@ pub fn hunt_and_kill(maze: &mut Maze, data: &MazeData) -> anyhow::Result<()> {
                 maze,
                 &mut p,
                 &mut dirs,
-                &mut adjacent_passages
+                &mut adjacent_passages,
+                &mut unchecked,
             )?;
 
-            if dirs.is_empty() { break; }
+            if dirs.is_empty() {
+                break;
+            }
         }
 
         let rand_dir = dirs[seeder.gen_range(0..dirs.len())];
@@ -52,7 +72,9 @@ pub fn hunt_and_kill(maze: &mut Maze, data: &MazeData) -> anyhow::Result<()> {
             Some(())
         });
 
-        if neighbor.is_none() { continue; }
+        if neighbor.is_none() {
+            continue;
+        }
 
         let neighbor = neighbor.unwrap();
 
@@ -77,51 +99,45 @@ fn hunt_phase(
     maze: &mut Maze,
     p: &mut Point,
     dirs: &mut Vec<Direction>,
-    adjacent_passages: &mut Vec<Direction>
+    adjacent_passages: &mut Vec<Direction>,
+    unchecked: &mut Vec<Point>,
 ) -> Result<()> {
     let size = get_size(data)?;
 
-    let mut should_break = false;
     let show_anim = data.show_anim();
-
     let desired_size = if show_anim { size * size } else { 0 };
     let mut visual_overwrites = vec![None; desired_size];
-    for x in get_maze_iter(&size) {
-        for y in get_maze_iter(&size) {
-            *p = Point { x, y };
-            if get_point(maze, &p) == PointState::Wall {
-                *adjacent_passages = get_available_dirs_state(&size, maze, p, PointState::Passage)?;
-                if show_anim  {
-                    visual_overwrites[point_to_numb(&p, size)] = Some(VisualIndicator::Searching);
-                }
+    for i in 0..unchecked.len() {
+        let p = unchecked[i];
+        if get_point(maze, &p) == PointState::Wall {
+            *adjacent_passages = get_available_dirs_state(&size, maze, &p, PointState::Passage)?;
+            if show_anim {
+                visual_overwrites[point_to_numb(&p, size)] = Some(VisualIndicator::Searching);
+            }
 
-                if !adjacent_passages.is_empty() {
-                    let passage_dir = adjacent_passages
-                        .get(seeder.gen_range(0..adjacent_passages.len()))
-                        .unwrap();
-                    let passage = go_to_dir(&size, &p, passage_dir)?.unwrap();
+            if !adjacent_passages.is_empty() {
+                let passage_dir = adjacent_passages
+                    .get(seeder.gen_range(0..adjacent_passages.len()))
+                    .unwrap();
+                let passage = go_to_dir(&size, &p, passage_dir)?.unwrap();
 
-                    *dirs = get_surrounding_walls(&size, maze, &p)?;
-                    if dirs.is_empty() {
-                        if show_anim {
-                            visual_overwrites[point_to_numb(&p, size)] = Some(VisualIndicator::SolvePath);
-                        }
-
-                        set_point(maze, &p, PointState::Passage);
-                        remove_wall(size, maze, &p, &passage)?;
-                        *adjacent_passages = vec![];
-                        continue;
+                *dirs = get_surrounding_walls(&size, maze, &p)?;
+                if dirs.is_empty() {
+                    if show_anim {
+                        visual_overwrites[point_to_numb(&p, size)] =
+                            Some(VisualIndicator::SolvePath);
                     }
 
+                    set_point(maze, &p, PointState::Passage);
                     remove_wall(size, maze, &p, &passage)?;
-                    should_break = true;
-                    break;
+                    *adjacent_passages = vec![];
+                    continue;
                 }
-            }
-        }
 
-        if should_break {
-            break;
+                unchecked.remove(i);
+                remove_wall(size, maze, &p, &passage)?;
+                break;
+            }
         }
     }
 

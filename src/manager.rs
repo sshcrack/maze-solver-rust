@@ -1,5 +1,5 @@
 use std::{
-    thread::{self, JoinHandle}, time::{Duration, Instant},
+    thread::{self, JoinHandle}, time::Instant,
 };
 
 use anyhow::Result;

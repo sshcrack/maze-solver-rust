@@ -1,8 +1,8 @@
-use std::{sync::{Arc, RwLock}, ops::Range};
+use std::sync::{Arc, RwLock};
 
 use anyhow::Result;
 use lazy_static::lazy_static;
-use rand::{rngs::StdRng, SeedableRng, Rng};
+use rand::{rngs::StdRng, SeedableRng};
 
 use crate::{point::point_state::PointState};
 
