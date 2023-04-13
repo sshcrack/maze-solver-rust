@@ -13,7 +13,7 @@ use crate::{
         consts::{get_size, check_size, MazeOptions},
         math::{set_point, set_point_mult, points_to_dir, vec2_to_numb},
         matrix::get_pos_between,
-        window::{update_maze_overwrite, update_maze_debug_overwrite}, options::MazeData,
+        window::update_maze_debug_overwrite, options::MazeData,
     },
 };
 

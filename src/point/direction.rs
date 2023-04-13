@@ -1,8 +1,12 @@
+use std::collections::HashMap;
+
 use lazy_static::lazy_static;
 
 use crate::tools::direction_data::DirectionData;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+use super::point::Point;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Direction {
     UP,
     DOWN,
@@ -16,7 +20,7 @@ impl Direction {
             Direction::UP,
             Direction::LEFT,
             Direction::RIGHT,
-            Direction::DOWN
+            Direction::DOWN,
         ]
     }
 
@@ -27,7 +31,10 @@ impl Direction {
             }
         }
 
-        panic!("wtf just happened there is no vec data in DIRECTION_VEC for {:?}", self)
+        panic!(
+            "wtf just happened there is no vec data in DIRECTION_VEC for {:?}",
+            self
+        )
     }
 }
 

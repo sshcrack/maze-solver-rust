@@ -42,7 +42,7 @@ pub fn a_star(maze: &mut Maze, data: &MazeData, options: &SolveOptions) -> Resul
 
         let dirs = get_available_dirs_state(&size, maze, &pos, PointState::Passage)?;
         for dir in dirs {
-            let neighbor = go_to_dir(&size, &pos, &dir)?;
+            let neighbor = go_to_dir(&size, &pos, &dir);
             if neighbor.is_none() { continue; }
 
             let between_pos = get_pos_between(&size, &pos, &dir)?.unwrap();

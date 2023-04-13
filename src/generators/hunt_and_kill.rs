@@ -66,7 +66,7 @@ pub fn hunt_and_kill(maze: &mut Maze, data: &MazeData) -> anyhow::Result<()> {
         }
 
         let rand_dir = dirs[seeder.gen_range(0..dirs.len())];
-        let neighbor = go_to_dir(&size, &p, &rand_dir)?;
+        let neighbor = go_to_dir(&size, &p, &rand_dir);
         count += 1;
         count_to_percentage(data, size, count, &mut last_percentage).and_then(|e| {
             last_percentage = e;
