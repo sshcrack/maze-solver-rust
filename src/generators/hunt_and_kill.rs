@@ -33,6 +33,8 @@ pub fn hunt_and_kill(maze: &mut Maze, data: &MazeData) -> anyhow::Result<()> {
     let mut pending = BinaryHeap::new();
 
     let mut unchecked = Vec::new();
+    let mut show_anim = data.show_anim();
+
     for y in get_maze_iter(&size) {
         for x in get_maze_iter(&size) {
             unchecked.push(Point { x, y })
@@ -40,7 +42,12 @@ pub fn hunt_and_kill(maze: &mut Maze, data: &MazeData) -> anyhow::Result<()> {
     }
 
     pending.push(Point { x, y });
+    let mut update_rng = rand::thread_rng();
     while !pending.is_empty() {
+        if update_rng.gen_bool(0.3) {
+            show_anim = data.show_anim();
+        }
+
         let mut p = pending.pop().unwrap();
         let mut dirs = get_surrounding_walls(&size, maze, &p)?;
         let mut adjacent_passages = get_available_dirs_state(&size, maze, &p, PointState::Passage)?;
@@ -48,6 +55,8 @@ pub fn hunt_and_kill(maze: &mut Maze, data: &MazeData) -> anyhow::Result<()> {
         if dirs.is_empty() {
             hunt_phase(
                 data,
+                size,
+                show_anim,
                 &mut seeder,
                 maze,
                 &mut p,
@@ -95,6 +104,8 @@ pub fn hunt_and_kill(maze: &mut Maze, data: &MazeData) -> anyhow::Result<()> {
 
 fn hunt_phase(
     data: &MazeData,
+    size: usize,
+    show_anim: bool,
     seeder: &mut StdRng,
     maze: &mut Maze,
     p: &mut Point,
@@ -102,13 +113,10 @@ fn hunt_phase(
     adjacent_passages: &mut Vec<Direction>,
     unchecked: &mut Vec<Point>,
 ) -> Result<()> {
-    let size = get_size(data)?;
-
-    let show_anim = data.show_anim();
     let desired_size = if show_anim { size * size } else { 0 };
     let mut visual_overwrites = vec![None; desired_size];
     for i in 0..unchecked.len() {
-        let p = unchecked[i];
+        *p = unchecked[i];
         if get_point(maze, &p) == PointState::Wall {
             *adjacent_passages = get_available_dirs_state(&size, maze, &p, PointState::Passage)?;
             if show_anim {
@@ -143,9 +151,9 @@ fn hunt_phase(
 
     if show_anim {
         visual_overwrites[point_to_numb(&p, size)] = Some(VisualIndicator::Match);
-    }
-    for _ in 0..5 {
-        update_maze_debug(data, maze, &visual_overwrites, false)?;
+        for _ in 0..5 {
+            update_maze_debug(data, maze, &visual_overwrites, false)?;
+        }
     }
 
     Ok(())

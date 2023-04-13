@@ -1,5 +1,3 @@
-use rand::rngs::StdRng;
-
 use crate::tools::options::MazeData;
 
 pub fn count_to_percentage(data: &MazeData, size: usize, count: u64, last_percentage: &mut f64) -> Option<f64> {

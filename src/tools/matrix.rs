@@ -2,7 +2,7 @@ use anyhow::Result;
 
 use crate::{point::{point::Point, point_state::PointState, direction::{Direction, DIRECTION_VEC}}};
 
-use super::{consts::{Maze, get_size}, math::get_point, direction_data::DirectionData, options::MazeData};
+use super::{consts::Maze, math::get_point, direction_data::DirectionData};
 
 
 pub fn go_to_dir(size: &usize, point: &Point, dir: &Direction) -> Result<Option<Point>> {
