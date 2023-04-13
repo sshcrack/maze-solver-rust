@@ -1,4 +1,4 @@
-use std::collections::BinaryHeap;
+use std::collections::VecDeque;
 
 use crate::{
     point::{
@@ -15,7 +15,7 @@ use crate::{
     }
 };
 use anyhow::{anyhow, Result};
-use rand::{rngs::StdRng, Rng};
+use rand::Rng;
 
 use super::tools::count_to_percentage;
 
@@ -30,14 +30,14 @@ pub fn hunt_and_kill(maze: &mut Maze, data: &MazeData) -> anyhow::Result<()> {
     let y = seeder.gen_range(0..cell_size) * 2 + 1;
 
     let mut count = 0 as u64;
-    let mut pending = BinaryHeap::new();
-    let mut to_hunt = BinaryHeap::new();
+    let mut pending = VecDeque::new();
+    let mut to_hunt = VecDeque::new();
 
     let mut show_anim = data.show_anim();
 
     let start_p = Point { x, y };
-    pending.push(start_p.clone());
-    to_hunt.push(start_p);
+    pending.push_back(start_p.clone());
+    to_hunt.push_back(start_p);
 
     let mut update_rng = rand::thread_rng();
     while !pending.is_empty() {
@@ -45,7 +45,7 @@ pub fn hunt_and_kill(maze: &mut Maze, data: &MazeData) -> anyhow::Result<()> {
             show_anim = data.show_anim();
         }
 
-        let mut p = pending.pop().unwrap();
+        let mut p = pending.pop_back().unwrap();
         let mut dirs = get_surrounding_walls(&size, maze, &p)?;
 
         if dirs.is_empty() {
@@ -53,7 +53,6 @@ pub fn hunt_and_kill(maze: &mut Maze, data: &MazeData) -> anyhow::Result<()> {
                 data,
                 size,
                 show_anim,
-                &mut seeder,
                 maze,
                 &mut p,
                 &mut dirs,
@@ -83,8 +82,8 @@ pub fn hunt_and_kill(maze: &mut Maze, data: &MazeData) -> anyhow::Result<()> {
         let neighbor = neighbor.unwrap();
 
         remove_wall(size, maze, &p, &neighbor)?;
-        pending.push(neighbor);
-        to_hunt.push(neighbor);
+        pending.push_back(neighbor);
+        to_hunt.push_back(neighbor);
 
         update_maze(data, maze, false)?;
     }
@@ -102,11 +101,10 @@ fn hunt_phase(
     data: &MazeData,
     size: usize,
     show_anim: bool,
-    seeder: &mut StdRng,
     maze: &mut Maze,
     out: &mut Point,
     dirs: &mut Vec<Direction>,
-    to_hunt: &mut BinaryHeap<Point>,
+    to_hunt: &mut VecDeque<Point>,
 ) -> Result<()> {
     let desired_size = if show_anim { size * size } else { 0 };
     let mut visual_overwrites = vec![None; desired_size];
@@ -115,7 +113,7 @@ fn hunt_phase(
     let all_dirs = Direction::all().len();
     let mut tried = Vec::new();
     while !to_hunt.is_empty() {
-        let p =  to_hunt.pop().unwrap();
+        let p =  to_hunt.pop_front().unwrap();
         if show_anim {
             visual_overwrites[point_to_numb(&p, size)] = Some(VisualIndicator::Searching);
         }
@@ -145,7 +143,7 @@ fn hunt_phase(
     }
 
     for e in tried {
-        to_hunt.push(e);
+        to_hunt.push_back(e);
     }
 
     if show_anim {
