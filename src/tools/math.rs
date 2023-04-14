@@ -1,5 +1,3 @@
-use std::{ops::Range, iter::StepBy};
-
 use rand_distr::num_traits::Pow;
 
 use crate::point::{point::Point, direction::{Direction, DIRECTION_VEC}};
@@ -37,11 +35,6 @@ pub fn set_point_mult<T>(matrix: &mut [T], points: &Vec<Point>, state: T)
     for p in points {
         set_point(matrix, p, state.clone());
     }
-}
-
-
-pub fn get_maze_iter(size: &usize) -> StepBy<Range<usize>> {
-    (1..size.clone()).step_by(2)
 }
 
 pub fn get_dist(src: &Point, dest: &Point) -> u64 {

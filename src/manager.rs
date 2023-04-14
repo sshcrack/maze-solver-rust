@@ -3,17 +3,17 @@ use std::{
 };
 
 use anyhow::Result;
-use image::{RgbaImage, ImageBuffer, Rgba, ImageFormat};
+use image::ImageFormat;
 
 use crate::{
-    generators::generate::generate,
+    generators::{generate::generate, decimate::decimate_maze},
     point::{point::Point, point_state::VisualIndicator},
     solve::solve::{solve, SolveAlgorithm, SolveOptions},
     tools::{
         consts::{get_size, check_size, MazeOptions},
-        math::{set_point, set_point_mult, points_to_dir, vec2_to_numb},
+        math::{set_point, set_point_mult, points_to_dir},
         matrix::get_pos_between,
-        window::{update_maze_overwrite, update_maze_debug_overwrite}, options::MazeData,
+        window::update_maze_debug_overwrite, options::MazeData, image::maze_to_img,
     },
 };
 
@@ -69,6 +69,9 @@ impl MazeThread {
         println!("Generating...");
         let start_time = Instant::now();
         let mut maze = generate(&data)?;
+        let size = get_size(&data)?;
+
+        decimate_maze(&data, &mut maze, size);
 
         let start = Point { x: 1, y: 1 };
         let end = Point {
@@ -82,10 +85,8 @@ impl MazeThread {
             end,
         };
 
-        let size = get_size(&data)?;
         println!("Solving...");
-        let path = solve(&mut maze, &data, &options)?;
-        let mut visual_overwrites = vec![None as Option<VisualIndicator>; size * size];
+        let (path, mut visual_overwrites) = solve(&mut maze, &data, &options)?;
 
         println!("Drawing...");
         for i in 0..path.len() {
@@ -124,22 +125,12 @@ impl MazeThread {
         data.set_time_elapsed(start_time.elapsed());
         data.set_done(true);
         while !data.should_exit() {
-            if data.show_debug() {
-                update_maze_debug_overwrite(&data, &maze, &visual_overwrites, true, true)?;
-            } else {
-                update_maze_overwrite(&data, &maze, true)?;
-            }
+            update_maze_debug_overwrite(&data, &maze, &visual_overwrites, true, true)?;
 
             let save_path = data.take_requested();
             if save_path.is_some() {
                 let save_path = save_path.unwrap();
-                let pixels = data.get_pixels();
-
-                let mut out: RgbaImage = ImageBuffer::new(size as u32, size as u32);
-                for pixel in out.enumerate_pixels_mut() {
-                    let index = vec2_to_numb(pixel.0 as usize, pixel.1 as usize, size);
-                    *pixel.2 = Rgba(pixels[index].to_array());
-                }
+                let out = maze_to_img(&data, &maze, &visual_overwrites)?;
 
                 out.save_with_format(save_path, ImageFormat::Png).unwrap();
             }

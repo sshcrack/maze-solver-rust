@@ -1,4 +1,4 @@
-//#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 
 use std::{
     path::PathBuf,
@@ -67,6 +67,8 @@ struct MyApp {
 
     save_path: PathBuf,
     save_file_dialog: ImNativeFileDialog<Option<PathBuf>>,
+
+    decimate: usize
 }
 
 impl MyApp {
@@ -89,12 +91,13 @@ impl MyApp {
 
             show_animation: true,
 
-            speed: 1.0,
+            speed: 0.975,
             speed_text: "1.0".to_string(),
             show_debug: true,
 
             save_path: Default::default(),
             save_file_dialog: Default::default(),
+            decimate: 15
         };
 
         e.curr = Some(e.start_generating(ctx));
@@ -105,7 +108,7 @@ impl MyApp {
         let data = MazeData::new(
             ctx,
             &self.pixels,
-            &MazeOptions::new(self.size, self.seed),
+            &MazeOptions::new(self.size, self.seed, self.decimate),
             &AnimOptions::new(self.show_debug, self.show_animation, self.speed),
         );
 
@@ -297,6 +300,14 @@ impl MyApp {
         });
     }
 
+    fn add_decimate_slider(&mut self, ui: &mut Ui) {
+        ui.horizontal(|ui| {
+            let decimate_label = ui.label("Decimate (0-100): ");
+            let curr = self.decimate.to_string();
+            ui.add(Slider::new(&mut self.decimate, 0..=100));
+        });
+    }
+
     fn add_save_button(&mut self, ui: &mut Ui, ctx: &Context) {
         if let Some(result) = self.save_file_dialog.check() {
             match result {
@@ -400,6 +411,7 @@ impl App for MyApp {
             self.add_size_selector(ui, frame);
             self.add_speed_selector(ui, frame);
             self.add_show_animation(ui);
+            self.add_decimate_slider(ui);
             ui.horizontal(|ui| {
                 self.add_save_button(ui, ctx);
                 self.add_gen_button(ui, ctx);

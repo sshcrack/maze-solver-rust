@@ -6,7 +6,7 @@ use egui::Color32;
 use crate::{tools::{consts::{Maze, get_size}, matrix::{go_to_dir, get_available_dirs_state, has_passage_between, get_pos_between}, math::{set_point, point_to_numb, linear_dist, points_to_dir, get_point}, window::update_maze_debug, options::MazeData}, solve::solve::SolveOptions, point::{point_state::{VisualIndicator, PointState}, point::Point}};
 use super::Node;
 
-pub fn a_star(maze: &mut Maze, data: &MazeData, options: &SolveOptions) -> Result<Vec<Point>> {
+pub fn a_star(maze: &mut Maze, data: &MazeData, options: &SolveOptions) -> Result<(Vec<Point>, Vec<Option<VisualIndicator>>)> {
     println!("Running a*");
     let SolveOptions { start, end, ..} = options;
     let size = get_size(data)?;
@@ -42,7 +42,7 @@ pub fn a_star(maze: &mut Maze, data: &MazeData, options: &SolveOptions) -> Resul
 
         let dirs = get_available_dirs_state(&size, maze, &pos, PointState::Passage)?;
         for dir in dirs {
-            let neighbor = go_to_dir(&size, &pos, &dir)?;
+            let neighbor = go_to_dir(&size, &pos, &dir);
             if neighbor.is_none() { continue; }
 
             let between_pos = get_pos_between(&size, &pos, &dir)?.unwrap();
@@ -75,8 +75,10 @@ pub fn a_star(maze: &mut Maze, data: &MazeData, options: &SolveOptions) -> Resul
 
                 end_node = Some(neighbor_index);
                 set_point(&mut visual_overwrites, &end, Some(VisualIndicator::End));
-                for _ in 0..100 {
-                    update_maze_debug(data, maze, &visual_overwrites, true)?;
+                if data.show_anim() {
+                    for _ in 0..100 {
+                        update_maze_debug(data, maze, &visual_overwrites, true)?;
+                    }
                 }
                 break;
             }
@@ -93,7 +95,7 @@ pub fn a_star(maze: &mut Maze, data: &MazeData, options: &SolveOptions) -> Resul
 
 
     let end_node = nodes.get(end_node.unwrap()).unwrap();
-    Ok(node_to_path(&nodes, end_node, start))
+    Ok((node_to_path(&nodes, end_node, start), visual_overwrites))
 }
 
 fn node_to_path(nodes: &Vec<Node>, node: &Node, start: &Point) -> Vec<Point> {

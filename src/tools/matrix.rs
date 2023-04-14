@@ -2,10 +2,20 @@ use anyhow::Result;
 
 use crate::{point::{point::Point, point_state::PointState, direction::{Direction, DIRECTION_VEC}}};
 
-use super::{consts::{Maze, get_size}, math::get_point, direction_data::DirectionData, options::MazeData};
+use super::{consts::Maze, math::get_point, direction_data::DirectionData};
+
+pub fn get_stat_dir(maze: &Maze, size: &usize, point: &Point, dir: &Direction) -> Option<PointState> {
+    let next = go_to_dir(size, point, dir);
+    if next.is_none() {
+        return None;
+    }
+
+    let next = next.unwrap();
+    Some(get_point(maze, &next))
+}
 
 
-pub fn go_to_dir(size: &usize, point: &Point, dir: &Direction) -> Result<Option<Point>> {
+pub fn go_to_dir(size: &usize, point: &Point, dir: &Direction) -> Option<Point> {
     let mut pos = None;
     let size = *size as i32;
     let Point { x, y } = *point;
@@ -15,7 +25,7 @@ pub fn go_to_dir(size: &usize, point: &Point, dir: &Direction) -> Result<Option<
             let x = x as i32 + info.x;
             let y = y as i32 + info.y;
             if x < 0 || y < 0 || x >= size || y >= size {
-                continue;
+                break;
             }
 
             let x = x as usize;
@@ -25,7 +35,7 @@ pub fn go_to_dir(size: &usize, point: &Point, dir: &Direction) -> Result<Option<
         }
     }
 
-    return Ok(pos);
+    return pos;
 }
 
 pub fn get_surrounding_walls(size: &usize, maze: &Maze, point: &Point) -> Result<Vec<Direction>> {
@@ -38,10 +48,12 @@ pub fn get_available_dirs_state(
     point: &Point,
     desired_state: PointState,
 ) -> anyhow::Result<Vec<Direction>> {
-    let mut available = Vec::new();
+    let all = Direction::all();
+    let all_dir = all.len();
 
-    for dir in Direction::all() {
-        let p = go_to_dir(size, point, &dir)?;
+    let mut available = Vec::with_capacity(all_dir);
+    for dir in all {
+        let p = go_to_dir(size, point, &dir);
         if p.is_none() {
             continue;
         }
@@ -59,7 +71,7 @@ pub fn get_available_dirs_state(
 
 // I hate carrying around data but I cant store it in consts file as well because I want to have multiple threads running mazes later :(
 pub fn get_pos_between(size: &usize, src: &Point, dir: &Direction) -> Result<Option<Point>> {
-    let dest = go_to_dir(size, src, dir)?;
+    let dest = go_to_dir(size, src, dir);
     if dest.is_none() {
         return Ok(None);
     }
