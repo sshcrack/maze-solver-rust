@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use anyhow::Result;
 
 use crate::{tools::{consts::Maze, options::MazeData}, point::{point::Point, point_state::VisualIndicator}};
@@ -7,7 +9,11 @@ use super::a_star::a_star;
 pub fn solve(maze: &mut Maze, data: &MazeData, options: &SolveOptions) -> Result<(Vec<Point>, Vec<Option<VisualIndicator>>)> {
     let SolveOptions { algorithm, .. } = options;
     let res = match algorithm {
-        SolveAlgorithm::AStar => a_star(maze, data, options)
+        SolveAlgorithm::AStar => a_star(maze, data, options),
+        SolveAlgorithm::None => {
+            let no_visual = vec![None; maze.len()];
+            Ok((Vec::new(), no_visual))
+        }
     };
 
     res
@@ -15,7 +21,25 @@ pub fn solve(maze: &mut Maze, data: &MazeData, options: &SolveOptions) -> Result
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SolveAlgorithm {
+    None,
     AStar
+}
+
+impl  SolveAlgorithm {
+    pub fn all() -> Vec<Self> {
+        vec![SolveAlgorithm::AStar, SolveAlgorithm::None]
+    }
+}
+
+impl Display for SolveAlgorithm {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let e = match self {
+            Self::AStar => "A*",
+            Self::None => "None"
+        };
+
+        write!(f, "{}", e)
+    }
 }
 
 #[derive(Debug, Clone, Copy)]

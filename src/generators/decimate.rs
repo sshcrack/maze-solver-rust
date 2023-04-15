@@ -5,7 +5,6 @@ use crate::{
     tools::{
         consts::{get_seeder, Maze},
         math::{set_point, get_point},
-        matrix::{get_stat_dir},
         options::MazeData,
     },
 };

@@ -28,7 +28,7 @@ impl Default for MazeOptions {
         let rand = rand::random();
         Self {
             size: 50,
-            decimate: 15,
+            decimate: 2,
             seed: rand,
             seeder: StdRng::seed_from_u64(rand)
         }
